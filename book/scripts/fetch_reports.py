@@ -70,9 +70,16 @@ def main() -> int:
         for row in reader:
             name = row["name"].strip()
             org = row["org"].strip()
+            cohort = (row.get("cohort") or "1").strip()
             repo_url = (row.get("repo") or "").strip()
             pages_url = (row.get("pages_url") or "").strip()
-            entry = {"name": name, "org": org, "repo": repo_url, "pages_url": pages_url}
+            entry = {
+                "cohort": cohort,
+                "name": name,
+                "org": org,
+                "repo": repo_url,
+                "pages_url": pages_url,
+            }
             print(f"\n[ {org} / {name} ]")
             if not repo_url:
                 print("  (no repo URL — skipped)")
@@ -99,7 +106,9 @@ def main() -> int:
                     entry["status"] = "no-html"
                     manifest.append(entry)
                     continue
-                dest = REPORTS_DIR / f"{safe_slug(org)}_{safe_slug(name)}.html"
+                cohort_dir = REPORTS_DIR / f"cohort{cohort}"
+                cohort_dir.mkdir(parents=True, exist_ok=True)
+                dest = cohort_dir / f"{safe_slug(org)}_{safe_slug(name)}.html"
                 shutil.copy2(html, dest)
                 entry["html_path"] = html.relative_to(td_path).as_posix()
                 entry["local"] = str(dest.relative_to(ROOT))

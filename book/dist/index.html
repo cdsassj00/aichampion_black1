@@ -2,14 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>SLM 모델 조사 보고서 모음집</title>
+<title>대한민국 AI 거점 리더 · SLM 모델 조사 보고서 모음집</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
 <style>
   :root {
-    --bg:#0f172a; --panel:#111827; --panel-2:#1f2937;
-    --ink:#e5e7eb; --ink-mute:#94a3b8; --accent:#60a5fa; --accent-soft:#1e3a8a;
-    --border:#1f2937;
+    --bg:#0b1220; --panel:#0f172a; --panel-2:#1e293b;
+    --ink:#e2e8f0; --ink-mute:#94a3b8; --accent:#60a5fa; --accent-soft:#1e3a8a;
+    --border:#1e293b;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -19,20 +19,27 @@
     display: grid; grid-template-columns: 320px 1fr; height: 100vh;
   }
   aside {
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    display: flex; flex-direction: column;
+    background: var(--panel); border-right: 1px solid var(--border);
+    overflow-y: auto; display: flex; flex-direction: column;
   }
   .brand {
-    padding: 20px 20px 12px;
-    border-bottom: 1px solid var(--border);
+    padding: 20px 20px 14px; border-bottom: 1px solid var(--border);
     position: sticky; top: 0; background: var(--panel); z-index: 1;
   }
   .brand .k { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); }
-  .brand .t { font-weight: 800; font-size: 17px; margin-top: 4px; line-height: 1.3; }
-  .brand a { color: var(--accent); text-decoration: none; font-size: 12px; }
-  ol.toc { list-style: none; padding: 8px 0; margin: 0; }
+  .brand .t { font-weight: 800; font-size: 17px; margin-top: 6px; line-height: 1.35; }
+  .brand .home {
+    display: inline-block; margin-top: 10px; font-size: 12px; color: var(--accent);
+    text-decoration: none; cursor: pointer;
+  }
+  .brand .home:hover { text-decoration: underline; }
+  ol.toc { list-style: none; padding: 8px 0 24px; margin: 0; }
+  ol.toc li.toc-section {
+    padding: 14px 16px 6px; font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-mute); font-weight: 700;
+    border-top: 1px solid var(--border); margin-top: 6px;
+  }
+  ol.toc li.toc-section:first-child { border-top: 0; margin-top: 0; }
   ol.toc li a {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 16px; text-decoration: none; color: var(--ink);
@@ -47,76 +54,101 @@
   ol.toc .meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   ol.toc .org { font-size: 11px; color: var(--ink-mute); }
   ol.toc .name { font-size: 14px; font-weight: 600; }
+
   main { position: relative; background: #f1f5f9; }
-  iframe {
-    width: 100%; height: 100%; border: 0; background: white;
-  }
+  iframe { width: 100%; height: 100%; border: 0; background: white; }
+
   .cover {
-    height: 100%; overflow-y: auto; padding: 80px 60px;
+    height: 100%; overflow-y: auto; padding: 72px 64px 96px;
     color: #0f172a; background: linear-gradient(180deg,#f8fafc, #e2e8f0);
     max-width: 880px; margin: 0 auto;
   }
-  .cover .kicker { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #475569; font-weight: 700; }
-  .cover h1 { font-size: 44px; margin: 12px 0 16px; line-height: 1.15; letter-spacing: -0.02em; }
-  .cover .lede { font-size: 17px; color: #334155; line-height: 1.7; max-width: 640px; }
-  .cover .stats { margin-top: 24px; font-size: 14px; color: #475569; }
-  .cover .hint { margin-top: 40px; padding: 12px 16px; background: #fff; border-left: 3px solid #2563eb; border-radius: 4px; font-size: 14px; color: #1e3a8a; }
-  .cover h3 { margin-top: 48px; font-size: 14px; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; }
-  .cover .missing { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: #64748b; }
-  .cover .missing code { background: #e2e8f0; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+  .cover .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #475569; font-weight: 700;
+  }
+  .cover h1 {
+    font-size: 40px; margin: 14px 0 28px; line-height: 1.2;
+    letter-spacing: -0.02em; color: #0f172a;
+  }
+  .cover h2 { font-size: 22px; margin: 36px 0 12px; color: #1e3a8a; letter-spacing: -0.01em; }
+  .cover p { font-size: 16px; line-height: 1.85; color: #1f2937; margin: 0 0 18px; }
+  .cover p strong { color: #0f172a; background: linear-gradient(transparent 62%, #dbeafe 62%); padding: 0 2px; }
+  .cover p.sig { margin-top: 36px; font-style: normal; font-weight: 600; color: #334155; text-align: right; }
+  .cover .hint {
+    margin-top: 56px; padding: 14px 18px; background: #fff;
+    border-left: 3px solid #2563eb; border-radius: 4px;
+    font-size: 14px; color: #1e3a8a; line-height: 1.6;
+  }
+  .cover .pending-block {
+    margin-top: 40px; padding: 20px 22px; background: #fff7ed;
+    border: 1px solid #fed7aa; border-radius: 8px;
+  }
+  .cover .pending-block h3 {
+    font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #9a3412; margin: 0 0 10px;
+  }
+  .cover .pending-block ul { margin: 0; padding-left: 20px; font-size: 14px; color: #7c2d12; line-height: 1.7; }
+  .cover .pending-note { margin-top: 10px; font-size: 13px; color: #9a3412; }
+
   .topbar {
     position: absolute; top: 0; left: 0; right: 0; height: 44px;
-    display: flex; align-items: center; justify-content: space-between;
+    display: none; align-items: center; justify-content: space-between;
     padding: 0 16px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
     border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #334155; z-index: 5;
-    display: none;
   }
   .topbar.show { display: flex; }
   .topbar .title { font-weight: 600; }
+  .topbar .nav { display: flex; align-items: center; gap: 6px; }
   .topbar .nav button {
     background: white; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px;
-    cursor: pointer; margin-left: 6px; font-size: 12px;
+    cursor: pointer; font-size: 12px;
   }
   .topbar .nav button:hover { background: #f1f5f9; }
   .topbar .nav button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .topbar a { color: #2563eb; text-decoration: none; font-size: 12px; margin-left: 12px; }
+  .topbar a { color: #2563eb; text-decoration: none; font-size: 12px; }
   iframe.show { margin-top: 44px; height: calc(100% - 44px); }
+
   @media (max-width: 820px) {
     body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-    aside { max-height: 220px; }
+    aside { max-height: 240px; }
+    .cover { padding: 40px 24px 80px; }
+    .cover h1 { font-size: 28px; }
   }
 </style>
 </head>
 <body>
 <aside>
   <div class="brand">
-    <div class="k">AI 전문인재 과정 · 1일차</div>
+    <div class="k">대한민국 AI 거점 리더 · 전문인재 과정</div>
     <div class="t">SLM 모델 조사 보고서<br>모음집</div>
+    <a class="home" id="home-link">← 발간사로 돌아가기</a>
   </div>
   <ol class="toc">
-    <li><a href="#" data-src="chapters/01_경남소방_김경훈.html" data-n="1"><span class="num">01</span><span class="meta"><span class="org">경남소방</span><span class="name">김경훈</span></span></a></li>
-<li><a href="#" data-src="chapters/02_경북경찰청_유도암.html" data-n="2"><span class="num">02</span><span class="meta"><span class="org">경북경찰청</span><span class="name">유도암</span></span></a></li>
-<li><a href="#" data-src="chapters/03_경상북도_봉화군_조율.html" data-n="3"><span class="num">03</span><span class="meta"><span class="org">경상북도 봉화군</span><span class="name">조율</span></span></a></li>
-<li><a href="#" data-src="chapters/04_경상북도_의성군_오현준.html" data-n="4"><span class="num">04</span><span class="meta"><span class="org">경상북도 의성군</span><span class="name">오현준</span></span></a></li>
-<li><a href="#" data-src="chapters/05_국립수산과학원_윤석진.html" data-n="5"><span class="num">05</span><span class="meta"><span class="org">국립수산과학원</span><span class="name">윤석진</span></span></a></li>
-<li><a href="#" data-src="chapters/06_방위사업청_정연호.html" data-n="6"><span class="num">06</span><span class="meta"><span class="org">방위사업청</span><span class="name">정연호</span></span></a></li>
-<li><a href="#" data-src="chapters/07_병무청_곽중호.html" data-n="7"><span class="num">07</span><span class="meta"><span class="org">병무청</span><span class="name">곽중호</span></span></a></li>
-<li><a href="#" data-src="chapters/08_서울소방_박선영.html" data-n="8"><span class="num">08</span><span class="meta"><span class="org">서울소방</span><span class="name">박선영</span></span></a></li>
-<li><a href="#" data-src="chapters/09_서울시_금천구_권동근.html" data-n="9"><span class="num">09</span><span class="meta"><span class="org">서울시 금천구</span><span class="name">권동근</span></span></a></li>
-<li><a href="#" data-src="chapters/10_소상공인시장진흥공단_곽태혁.html" data-n="10"><span class="num">10</span><span class="meta"><span class="org">소상공인시장진흥공단</span><span class="name">곽태혁</span></span></a></li>
-<li><a href="#" data-src="chapters/11_인천시교육청_이호철.html" data-n="11"><span class="num">11</span><span class="meta"><span class="org">인천시교육청</span><span class="name">이호철</span></span></a></li>
-<li><a href="#" data-src="chapters/12_질병관리청_정동석.html" data-n="12"><span class="num">12</span><span class="meta"><span class="org">질병관리청</span><span class="name">정동석</span></span></a></li>
-<li><a href="#" data-src="chapters/13_코레일유통_한재진.html" data-n="13"><span class="num">13</span><span class="meta"><span class="org">코레일유통</span><span class="name">한재진</span></span></a></li>
-<li><a href="#" data-src="chapters/14_통일부_홍준표.html" data-n="14"><span class="num">14</span><span class="meta"><span class="org">통일부</span><span class="name">홍준표</span></span></a></li>
-<li><a href="#" data-src="chapters/15_한국공항공사_박기현.html" data-n="15"><span class="num">15</span><span class="meta"><span class="org">한국공항공사</span><span class="name">박기현</span></span></a></li>
-<li><a href="#" data-src="chapters/16_한국방송통신전파진흥원_한민훈.html" data-n="16"><span class="num">16</span><span class="meta"><span class="org">한국방송통신전파진흥원</span><span class="name">한민훈</span></span></a></li>
-<li><a href="#" data-src="chapters/17_한국청소년활동진흥원_장성주.html" data-n="17"><span class="num">17</span><span class="meta"><span class="org">한국청소년활동진흥원</span><span class="name">장성주</span></span></a></li>
-<li><a href="#" data-src="chapters/18_한국토지주택공사_박효철.html" data-n="18"><span class="num">18</span><span class="meta"><span class="org">한국토지주택공사</span><span class="name">박효철</span></span></a></li>
-<li><a href="#" data-src="chapters/19_한국환경공단_김윤성.html" data-n="19"><span class="num">19</span><span class="meta"><span class="org">한국환경공단</span><span class="name">김윤성</span></span></a></li>
-<li><a href="#" data-src="chapters/20_해양경찰청_이은주.html" data-n="20"><span class="num">20</span><span class="meta"><span class="org">해양경찰청</span><span class="name">이은주</span></span></a></li>
-<li><a href="#" data-src="chapters/21_행정안전부_김명래.html" data-n="21"><span class="num">21</span><span class="meta"><span class="org">행정안전부</span><span class="name">김명래</span></span></a></li>
-<li><a href="#" data-src="chapters/22_행정안전부_김희경.html" data-n="22"><span class="num">22</span><span class="meta"><span class="org">행정안전부</span><span class="name">김희경</span></span></a></li>
-<li><a href="#" data-src="chapters/23_행정안전부_이동주.html" data-n="23"><span class="num">23</span><span class="meta"><span class="org">행정안전부</span><span class="name">이동주</span></span></a></li>
+    <li class="toc-section"><span class="section-label">1기 · 23편</span></li>
+<li><a href="#" data-cohort="1" data-n="1"><span class="num">01</span><span class="meta"><span class="org">경남소방</span><span class="name">김경훈</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="2"><span class="num">02</span><span class="meta"><span class="org">경북경찰청</span><span class="name">유도암</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="3"><span class="num">03</span><span class="meta"><span class="org">경상북도 봉화군</span><span class="name">조율</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="4"><span class="num">04</span><span class="meta"><span class="org">경상북도 의성군</span><span class="name">오현준</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="5"><span class="num">05</span><span class="meta"><span class="org">국립수산과학원</span><span class="name">윤석진</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="6"><span class="num">06</span><span class="meta"><span class="org">방위사업청</span><span class="name">정연호</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="7"><span class="num">07</span><span class="meta"><span class="org">병무청</span><span class="name">곽중호</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="8"><span class="num">08</span><span class="meta"><span class="org">서울소방</span><span class="name">박선영</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="9"><span class="num">09</span><span class="meta"><span class="org">서울시 금천구</span><span class="name">권동근</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="10"><span class="num">10</span><span class="meta"><span class="org">소상공인시장진흥공단</span><span class="name">곽태혁</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="11"><span class="num">11</span><span class="meta"><span class="org">인천시교육청</span><span class="name">이호철</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="12"><span class="num">12</span><span class="meta"><span class="org">질병관리청</span><span class="name">정동석</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="13"><span class="num">13</span><span class="meta"><span class="org">코레일유통</span><span class="name">한재진</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="14"><span class="num">14</span><span class="meta"><span class="org">통일부</span><span class="name">홍준표</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="15"><span class="num">15</span><span class="meta"><span class="org">한국공항공사</span><span class="name">박기현</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="16"><span class="num">16</span><span class="meta"><span class="org">한국방송통신전파진흥원</span><span class="name">한민훈</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="17"><span class="num">17</span><span class="meta"><span class="org">한국청소년활동진흥원</span><span class="name">장성주</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="18"><span class="num">18</span><span class="meta"><span class="org">한국토지주택공사</span><span class="name">박효철</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="19"><span class="num">19</span><span class="meta"><span class="org">한국환경공단</span><span class="name">김윤성</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="20"><span class="num">20</span><span class="meta"><span class="org">해양경찰청</span><span class="name">이은주</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="21"><span class="num">21</span><span class="meta"><span class="org">행정안전부</span><span class="name">김명래</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="22"><span class="num">22</span><span class="meta"><span class="org">행정안전부</span><span class="name">김희경</span></span></a></li>
+<li><a href="#" data-cohort="1" data-n="23"><span class="num">23</span><span class="meta"><span class="org">행정안전부</span><span class="name">이동주</span></span></a></li>
   </ol>
 </aside>
 <main>
@@ -129,11 +161,20 @@
     </div>
   </div>
   <div id="viewer">
-    <div class="cover"><div class="kicker">AI 전문인재 과정</div><h1>SLM 모델 조사 보고서 모음집</h1><p class="lede">1일차 과제 · 24명의 공공부문 수강생이 작성한 SLM 모델 조사 보고서를 한 권으로 엮었습니다.</p><p class="stats">총 <strong>23</strong>편 · 소속 기관 가나다순 정렬</p><p class="hint">← 왼쪽 목차에서 챕터를 선택하세요.</p><h3>수집되지 않은 항목</h3><ul class='missing'><li>행정안전부 / 주선호 — <code>missing-url</code></li></ul></div>
+    <div class="cover"><div class="kicker">AI 전문인재 과정 · 1일차 보고서 모음</div><h1>발간사</h1>
+<p>생성형 AI가 폭발적으로 발전하는 시기에, 공공부문은 새로운 질문 앞에 서 있습니다. <strong>데이터 주권과 망분리, 도메인의 특수성, 한정된 컴퓨팅 자원이라는 제약 안에서, 어떻게 AI를 우리 업무 안으로 들여올 것인가.</strong></p>
+<p>『대한민국 AI 거점 리더 — 전문인재 과정』은 바로 이 질문에 답하기 위해 출범했습니다. 정부 부처, 지방자치단체, 공공기관에서 모인 리더들이 각자의 자리에서 공공 AI 전환의 최전선을 책임지고 있습니다. 병무청·행정안전부·통일부·질병관리청·방위사업청 같은 중앙부처부터, 서울 금천구·경상북도 봉화군·의성군 같은 풀뿌리 지방자치단체, 그리고 소방·경찰·해양경찰·교육청·공항공사·토지주택공사·환경공단·국립수산과학원 등 국민의 일상과 맞닿은 현장 기관까지 — 한자리에 모인 폭과 깊이가 이 과정의 가장 큰 자산입니다.</p>
+<p>이 책은 1기 리더들의 <strong>1일차 결과물</strong>입니다. 각 리더는 자신의 기관에 가장 적합한 <strong>소형 언어모델(SLM, Small Language Model)</strong> 을 조사했습니다. 거대 모델이 모든 답을 줄 수 없는 공공의 영역에서, SLM은 가장 현실적인 출발점입니다. 작은 모델은 작은 자원으로 돌고, 우리가 책임질 수 있는 경계 안에서 살며, 우리의 도메인 데이터로 길들여집니다. 24편의 보고서는 각자의 기관이 처한 제약과 기회를 정직하게 들여다본 결과이며, 그 안에는 앞으로 대한민국 공공 AI가 디딜 작은 디딤돌들이 담겨 있습니다.</p>
+<p>이 모음집이 두 가지 역할을 하기를 바랍니다.</p>
+<p>첫째, 같은 고민을 하는 다른 공공기관의 동료들에게 <strong>참고할 수 있는 사례집</strong>이 되기를.</p>
+<p>둘째, 1기 리더 자신에게는 <strong>앞으로의 여정을 기록하는 출발점</strong>이 되기를.</p>
+<p>머지않아 <strong>2기 리더들의 보고서도 이 책에 함께 엮일 것</strong>입니다. 작은 모델로 시작하는 큰 변화 — 그 첫 페이지를 함께 엽니다.</p>
+<p class='sig'>— 대한민국 AI 거점 리더(전문인재) 과정 1기 일동</p><div class="pending-block"><h3>합류 예정</h3><ul><li>행정안전부 / <strong>주선호</strong> 리더 — 자료 합류 예정</li></ul><p class="pending-note">2기 리더들의 보고서도 곧 이 책에 함께 엮입니다.</p></div><p class="hint">← 왼쪽 목차에서 챕터를 선택하면 해당 리더의 보고서가 열립니다.</p></div>
   </div>
 </main>
 <script>
-const chapters = [{"n": 1, "slug": "01_경남소방_김경훈.html", "name": "김경훈", "org": "경남소방", "repo": "https://github.com/a01068781612-dot/slm-model-report-gnfire-kimkh"}, {"n": 2, "slug": "02_경북경찰청_유도암.html", "name": "유도암", "org": "경북경찰청", "repo": "https://github.com/skyonline112/slm-model-report-gbpolice-yudoam"}, {"n": 3, "slug": "03_경상북도_봉화군_조율.html", "name": "조율", "org": "경상북도 봉화군", "repo": "https://github.com/choyul/slm-model-report-bonghwa"}, {"n": 4, "slug": "04_경상북도_의성군_오현준.html", "name": "오현준", "org": "경상북도 의성군", "repo": "https://github.com/hyeonjunIswhat/slm-model-report-usc-hyeonjun"}, {"n": 5, "slug": "05_국립수산과학원_윤석진.html", "name": "윤석진", "org": "국립수산과학원", "repo": "https://github.com/syoon-lab/slm-model-report-nifs-syoon"}, {"n": 6, "slug": "06_방위사업청_정연호.html", "name": "정연호", "org": "방위사업청", "repo": "https://github.com/ai-studying-man/assignment"}, {"n": 7, "slug": "07_병무청_곽중호.html", "name": "곽중호", "org": "병무청", "repo": "https://github.com/GitBravo/slm-model-report-mma-junghokwak"}, {"n": 8, "slug": "08_서울소방_박선영.html", "name": "박선영", "org": "서울소방", "repo": "https://github.com/sunyoung119/slm-model-report-SeoulFire-PSY"}, {"n": 9, "slug": "09_서울시_금천구_권동근.html", "name": "권동근", "org": "서울시 금천구", "repo": "https://github.com/kdk5534/slm-model-report-seoul_geumcheon-KwonDongGeun"}, {"n": 10, "slug": "10_소상공인시장진흥공단_곽태혁.html", "name": "곽태혁", "org": "소상공인시장진흥공단", "repo": "https://github.com/kthyeok/slm-model-report-semas-kwaktaehyeok"}, {"n": 11, "slug": "11_인천시교육청_이호철.html", "name": "이호철", "org": "인천시교육청", "repo": "https://github.com/Obito-AI/slm-model-report-ice-leehocheol"}, {"n": 12, "slug": "12_질병관리청_정동석.html", "name": "정동석", "org": "질병관리청", "repo": "https://github.com/jeong7-ux/slm-model-report-kdca-jeong"}, {"n": 13, "slug": "13_코레일유통_한재진.html", "name": "한재진", "org": "코레일유통", "repo": "https://github.com/hanjaejin/slm-model-report-korailretail-hanjaejin"}, {"n": 14, "slug": "14_통일부_홍준표.html", "name": "홍준표", "org": "통일부", "repo": "https://github.com/AzureSkyBoxs/slm-model-report-mpm-jphong"}, {"n": 15, "slug": "15_한국공항공사_박기현.html", "name": "박기현", "org": "한국공항공사", "repo": "https://github.com/okokp7608-wq/slm-model-report-kac-kihyun"}, {"n": 16, "slug": "16_한국방송통신전파진흥원_한민훈.html", "name": "한민훈", "org": "한국방송통신전파진흥원", "repo": "https://github.com/minhoon-kor/slm-model-report-sobang-mh"}, {"n": 17, "slug": "17_한국청소년활동진흥원_장성주.html", "name": "장성주", "org": "한국청소년활동진흥원", "repo": "https://github.com/SJJ-universe/slm-model-report-KYWA-SungJu"}, {"n": 18, "slug": "18_한국토지주택공사_박효철.html", "name": "박효철", "org": "한국토지주택공사", "repo": "https://github.com/rocheol2/slm-model-report-LH-ParkHyocheol"}, {"n": 19, "slug": "19_한국환경공단_김윤성.html", "name": "김윤성", "org": "한국환경공단", "repo": "https://github.com/evalove4/slm-model-report-keco-yskim"}, {"n": 20, "slug": "20_해양경찰청_이은주.html", "name": "이은주", "org": "해양경찰청", "repo": "https://github.com/eeejy/slm-model-report-kcg-EunjuLee"}, {"n": 21, "slug": "21_행정안전부_김명래.html", "name": "김명래", "org": "행정안전부", "repo": "https://github.com/myungraekim/slm-model-report-mois-myungraekim"}, {"n": 22, "slug": "22_행정안전부_김희경.html", "name": "김희경", "org": "행정안전부", "repo": "https://github.com/heekyeongkim/slm-model-report----"}, {"n": 23, "slug": "23_행정안전부_이동주.html", "name": "이동주", "org": "행정안전부", "repo": "https://github.com/buddykorea79-cell/slm-model-report-mois-leedongjoo"}];
+const chapters = [{"cohort": "1", "n": 1, "global_n": 1, "slug": "c1_01_경남소방_김경훈.html", "name": "김경훈", "org": "경남소방", "repo": "https://github.com/a01068781612-dot/slm-model-report-gnfire-kimkh"}, {"cohort": "1", "n": 2, "global_n": 2, "slug": "c1_02_경북경찰청_유도암.html", "name": "유도암", "org": "경북경찰청", "repo": "https://github.com/skyonline112/slm-model-report-gbpolice-yudoam"}, {"cohort": "1", "n": 3, "global_n": 3, "slug": "c1_03_경상북도_봉화군_조율.html", "name": "조율", "org": "경상북도 봉화군", "repo": "https://github.com/choyul/slm-model-report-bonghwa"}, {"cohort": "1", "n": 4, "global_n": 4, "slug": "c1_04_경상북도_의성군_오현준.html", "name": "오현준", "org": "경상북도 의성군", "repo": "https://github.com/hyeonjunIswhat/slm-model-report-usc-hyeonjun"}, {"cohort": "1", "n": 5, "global_n": 5, "slug": "c1_05_국립수산과학원_윤석진.html", "name": "윤석진", "org": "국립수산과학원", "repo": "https://github.com/syoon-lab/slm-model-report-nifs-syoon"}, {"cohort": "1", "n": 6, "global_n": 6, "slug": "c1_06_방위사업청_정연호.html", "name": "정연호", "org": "방위사업청", "repo": "https://github.com/ai-studying-man/assignment"}, {"cohort": "1", "n": 7, "global_n": 7, "slug": "c1_07_병무청_곽중호.html", "name": "곽중호", "org": "병무청", "repo": "https://github.com/GitBravo/slm-model-report-mma-junghokwak"}, {"cohort": "1", "n": 8, "global_n": 8, "slug": "c1_08_서울소방_박선영.html", "name": "박선영", "org": "서울소방", "repo": "https://github.com/sunyoung119/slm-model-report-SeoulFire-PSY"}, {"cohort": "1", "n": 9, "global_n": 9, "slug": "c1_09_서울시_금천구_권동근.html", "name": "권동근", "org": "서울시 금천구", "repo": "https://github.com/kdk5534/slm-model-report-seoul_geumcheon-KwonDongGeun"}, {"cohort": "1", "n": 10, "global_n": 10, "slug": "c1_10_소상공인시장진흥공단_곽태혁.html", "name": "곽태혁", "org": "소상공인시장진흥공단", "repo": "https://github.com/kthyeok/slm-model-report-semas-kwaktaehyeok"}, {"cohort": "1", "n": 11, "global_n": 11, "slug": "c1_11_인천시교육청_이호철.html", "name": "이호철", "org": "인천시교육청", "repo": "https://github.com/Obito-AI/slm-model-report-ice-leehocheol"}, {"cohort": "1", "n": 12, "global_n": 12, "slug": "c1_12_질병관리청_정동석.html", "name": "정동석", "org": "질병관리청", "repo": "https://github.com/jeong7-ux/slm-model-report-kdca-jeong"}, {"cohort": "1", "n": 13, "global_n": 13, "slug": "c1_13_코레일유통_한재진.html", "name": "한재진", "org": "코레일유통", "repo": "https://github.com/hanjaejin/slm-model-report-korailretail-hanjaejin"}, {"cohort": "1", "n": 14, "global_n": 14, "slug": "c1_14_통일부_홍준표.html", "name": "홍준표", "org": "통일부", "repo": "https://github.com/AzureSkyBoxs/slm-model-report-mpm-jphong"}, {"cohort": "1", "n": 15, "global_n": 15, "slug": "c1_15_한국공항공사_박기현.html", "name": "박기현", "org": "한국공항공사", "repo": "https://github.com/okokp7608-wq/slm-model-report-kac-kihyun"}, {"cohort": "1", "n": 16, "global_n": 16, "slug": "c1_16_한국방송통신전파진흥원_한민훈.html", "name": "한민훈", "org": "한국방송통신전파진흥원", "repo": "https://github.com/minhoon-kor/slm-model-report-sobang-mh"}, {"cohort": "1", "n": 17, "global_n": 17, "slug": "c1_17_한국청소년활동진흥원_장성주.html", "name": "장성주", "org": "한국청소년활동진흥원", "repo": "https://github.com/SJJ-universe/slm-model-report-KYWA-SungJu"}, {"cohort": "1", "n": 18, "global_n": 18, "slug": "c1_18_한국토지주택공사_박효철.html", "name": "박효철", "org": "한국토지주택공사", "repo": "https://github.com/rocheol2/slm-model-report-LH-ParkHyocheol"}, {"cohort": "1", "n": 19, "global_n": 19, "slug": "c1_19_한국환경공단_김윤성.html", "name": "김윤성", "org": "한국환경공단", "repo": "https://github.com/evalove4/slm-model-report-keco-yskim"}, {"cohort": "1", "n": 20, "global_n": 20, "slug": "c1_20_해양경찰청_이은주.html", "name": "이은주", "org": "해양경찰청", "repo": "https://github.com/eeejy/slm-model-report-kcg-EunjuLee"}, {"cohort": "1", "n": 21, "global_n": 21, "slug": "c1_21_행정안전부_김명래.html", "name": "김명래", "org": "행정안전부", "repo": "https://github.com/myungraekim/slm-model-report-mois-myungraekim"}, {"cohort": "1", "n": 22, "global_n": 22, "slug": "c1_22_행정안전부_김희경.html", "name": "김희경", "org": "행정안전부", "repo": "https://github.com/heekyeongkim/slm-model-report----"}, {"cohort": "1", "n": 23, "global_n": 23, "slug": "c1_23_행정안전부_이동주.html", "name": "이동주", "org": "행정안전부", "repo": "https://github.com/buddykorea79-cell/slm-model-report-mois-leedongjoo"}];
+const coverHTML = document.getElementById('viewer').innerHTML;
 const links = Array.from(document.querySelectorAll('ol.toc a'));
 const viewer = document.getElementById('viewer');
 const topbar = document.getElementById('topbar');
@@ -141,6 +182,7 @@ const titleEl = document.getElementById('chapter-title');
 const repoLink = document.getElementById('open-repo');
 const prevBtn = document.getElementById('prev');
 const nextBtn = document.getElementById('next');
+const homeLink = document.getElementById('home-link');
 let current = -1;
 
 function show(i) {
@@ -149,29 +191,46 @@ function show(i) {
   const c = chapters[i];
   viewer.innerHTML = `<iframe class="show" src="chapters/${c.slug}" title="${c.org} ${c.name}"></iframe>`;
   topbar.classList.add('show');
-  titleEl.textContent = `${String(c.n).padStart(2,'0')}. ${c.org} · ${c.name}`;
+  titleEl.textContent = `[${c.cohort}기] ${String(c.n).padStart(2,'0')}. ${c.org} · ${c.name}`;
   repoLink.href = c.repo || '#';
   repoLink.style.display = c.repo ? 'inline' : 'none';
   prevBtn.disabled = i === 0;
   nextBtn.disabled = i === chapters.length - 1;
-  links.forEach((a, idx) => a.classList.toggle('active', idx === i));
-  history.replaceState(null, '', `#${c.n}`);
+  links.forEach((a) => {
+    const cohort = a.dataset.cohort, n = parseInt(a.dataset.n, 10);
+    a.classList.toggle('active', cohort === c.cohort && n === c.n);
+  });
+  history.replaceState(null, '', `#c${c.cohort}-${c.n}`);
 }
 
-links.forEach((a, idx) => {
-  a.addEventListener('click', (ev) => { ev.preventDefault(); show(idx); });
+function showCover() {
+  current = -1;
+  viewer.innerHTML = coverHTML;
+  topbar.classList.remove('show');
+  links.forEach(a => a.classList.remove('active'));
+  history.replaceState(null, '', '#');
+}
+
+links.forEach((a) => {
+  a.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const cohort = a.dataset.cohort;
+    const n = parseInt(a.dataset.n, 10);
+    const idx = chapters.findIndex(c => c.cohort === cohort && c.n === n);
+    if (idx >= 0) show(idx);
+  });
 });
 prevBtn.addEventListener('click', () => show(current - 1));
 nextBtn.addEventListener('click', () => show(current + 1));
+homeLink.addEventListener('click', (ev) => { ev.preventDefault(); showCover(); });
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'ArrowLeft' && current > 0) show(current - 1);
-  if (ev.key === 'ArrowRight' && current < chapters.length - 1) show(current + 1);
+  if (ev.key === 'ArrowRight' && current >= 0 && current < chapters.length - 1) show(current + 1);
 });
 
-const m = location.hash.match(/^#(\d+)/);
+const m = location.hash.match(/^#c(\d+)-(\d+)/);
 if (m) {
-  const n = parseInt(m[1], 10);
-  const idx = chapters.findIndex(c => c.n === n);
+  const idx = chapters.findIndex(c => c.cohort === m[1] && c.n === parseInt(m[2], 10));
   if (idx >= 0) show(idx);
 }
 </script>
