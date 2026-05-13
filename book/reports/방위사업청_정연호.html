@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>방사청_정연호_slm_report</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#f1f5f9;
+  --paper:#ffffff;
+  --surface:#f8fafc;
+  --border:#e2e8f0;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --accent:#2563eb;
+  --accent-dark:#1e40af;
+  --accent-soft:#eff6ff;
+  --accent-border:#bfdbfe;
+  --green:#047857;
+  --orange:#b45309;
+  --sans:'Pretendard Variable','Pretendard','Noto Sans KR',Arial,sans-serif;
+  --mono:Consolas,'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.75;
+}
+.stack{
+  max-width:960px;
+  margin:0 auto;
+  padding:32px 18px 56px;
+}
+.sheet{
+  background:var(--paper);
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 10px 30px rgba(15,23,42,.08);
+  padding:42px;
+  margin-bottom:22px;
+}
+.cover{
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 64%,#2563eb 100%);
+  color:#fff;
+  min-height:560px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.eyebrow{
+  font-family:var(--mono);
+  letter-spacing:.18em;
+  color:#93c5fd;
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+}
+h1{
+  margin:46px 0 12px;
+  font-size:48px;
+  line-height:1.12;
+  letter-spacing:-.04em;
+}
+.subtitle{
+  max-width:680px;
+  color:#cbd5e1;
+  font-size:18px;
+}
+.cover-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px;
+  border-top:1px solid rgba(255,255,255,.22);
+  padding-top:24px;
+}
+.cover-grid span{
+  display:block;
+  color:#93c5fd;
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.cover-grid strong{
+  display:block;
+  margin-top:7px;
+  color:#fff;
+  font-size:17px;
+}
+.id-block{
+  background:var(--accent-soft);
+  border:1px solid var(--accent-border);
+  border-left:5px solid var(--accent);
+  border-radius:8px;
+  padding:24px;
+  margin-bottom:28px;
+}
+.label{
+  color:var(--accent-dark);
+  font-family:var(--mono);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+.id-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px 28px;
+}
+.field b{
+  display:block;
+  color:var(--muted);
+  font-size:13px;
+  margin-bottom:4px;
+}
+.field span{
+  display:block;
+  border-bottom:1px solid var(--accent-border);
+  padding:4px 0 8px;
+  font-size:17px;
+  font-weight:700;
+}
+.sec{
+  margin:28px 0;
+  page-break-inside:avoid;
+}
+.sec h2{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin:0 0 14px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+  font-size:22px;
+  letter-spacing:-.02em;
+}
+.num{
+  min-width:42px;
+  color:var(--accent);
+  background:var(--accent-soft);
+  border:1px solid var(--accent-border);
+  border-radius:6px;
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1;
+  padding:8px 10px;
+  text-align:center;
+}
+.body{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
+  border-radius:0 8px 8px 0;
+  padding:20px 22px;
+}
+.body p{margin:0 0 12px}
+.body p:last-child{margin-bottom:0}
+table{
+  width:100%;
+  border-collapse:collapse;
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+  background:#fff;
+}
+td,th{
+  border-bottom:1px solid var(--border);
+  padding:13px 16px;
+  vertical-align:top;
+}
+tr:last-child td{border-bottom:0}
+td.k{
+  width:210px;
+  background:var(--surface);
+  color:var(--ink);
+  font-weight:800;
+}
+code{
+  font-family:var(--mono);
+  font-size:.92em;
+  color:var(--accent-dark);
+  background:#e0ecff;
+  border-radius:4px;
+  padding:2px 5px;
+}
+.badge{
+  display:inline-block;
+  margin:0 6px 6px 0;
+  border-radius:999px;
+  border:1px solid var(--accent-border);
+  background:var(--accent-soft);
+  color:var(--accent-dark);
+  padding:4px 10px;
+  font-size:13px;
+  font-weight:700;
+}
+.ok{color:var(--green);font-weight:800}
+.warn{color:var(--orange);font-weight:800}
+ul{margin:0;padding-left:20px}
+li{margin:7px 0}
+a{color:var(--accent-dark);font-weight:700;text-decoration:none}
+a:hover{text-decoration:underline}
+.callout{
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-left:5px solid var(--green);
+  border-radius:8px;
+  padding:20px 22px;
+}
+.print-note{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:18px;
+}
+@media print{
+  body{background:#fff}
+  .stack{max-width:none;padding:0}
+  .sheet{box-shadow:none;border:0;border-radius:0;margin:0;page-break-after:always}
+  .sheet:last-child{page-break-after:auto}
+}
+@media(max-width:720px){
+  .sheet{padding:26px}
+  h1{font-size:36px}
+  .id-grid,.cover-grid{grid-template-columns:1fr}
+  td.k{width:150px}
+}
+</style>
+</head>
+<body>
+<main class="stack">
+  <section class="sheet cover">
+    <div>
+      <div class="eyebrow">AI 전문인재 과정 · Day 1 Assignment</div>
+      <h1>Hugging Face SLM<br>모델 조사 보고서</h1>
+      <p class="subtitle">1B 이상 7B 이하 Small Language Model 중 공공기관 반복 행정업무 자동화에 활용 가능한 텍스트 생성형 모델을 선정하고, 모델 카드와 설정 파일 기준으로 기술적 특징과 활용 가능성을 분석한다.</p>
+    </div>
+    <div class="cover-grid">
+      <div><span>Track</span><strong>SLM Research</strong></div>
+      <div><span>Format</span><strong>HTML Report</strong></div>
+      <div><span>Selected Model</span><strong>Qwen3-4B-Instruct-2507</strong></div>
+    </div>
+  </section>
+
+  <section class="sheet">
+    <div class="id-block">
+      <div class="label">Student Identity · 수강생 정보</div>
+      <div class="id-grid">
+        <div class="field"><b>수강생 소속</b><span>방위사업청</span></div>
+        <div class="field"><b>수강생 이름</b><span>정연호</span></div>
+        <div class="field"><b>선택 모델명</b><span>Qwen/Qwen3-4B-Instruct-2507</span></div>
+        <div class="field"><b>Hugging Face 모델 링크</b><span><a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507">https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507</a></span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">01</span>모델 선택 이유</h2>
+      <div class="body">
+        <p><code>Qwen/Qwen3-4B-Instruct-2507</code>은 Hugging Face 기준 약 4.02B 파라미터의 텍스트 생성 모델로, 과제 조건인 1B 이상 7B 이하 범위를 명확하게 충족한다. 모델 카드의 태그와 API 정보 기준으로 <code>text-generation</code>, <code>conversational</code>, <code>transformers</code>, <code>safetensors</code>, <code>license:apache-2.0</code>가 확인되며, 이미지 전용·음성 전용·임베딩 전용 모델이 아니다.</p>
+        <p>공공기관 업무 관점에서는 단순 Base 모델보다 Instruct 모델이 더 적합하다. 사용자의 지시를 따라 행정문서 요약, 민원 질의응답 초안, 표 기반 자료 정리, 엑셀/PPTX 자동화용 JSON·CSV·파이썬 코드 생성 같은 반복 업무를 수행하기 쉽기 때문이다. 또한 Qwen3 계열은 비교적 최신 모델이며, 긴 컨텍스트와 도구 호출 템플릿을 지원해 문서 처리 자동화 시스템과 결합하기 좋다.</p>
+        <p>선정 과정에서 <code>Qwen3-VL-2B-Instruct</code>는 규모는 적합하지만 Vision-Language 계열이라 본 과제의 순수 SLM 분석 대상으로는 제외했고, <code>Qwen3-0.6B</code>는 1B 미만이므로 제외했다. <code>Qwen3-4B-Base</code>와 <code>microsoft/phi-2</code>는 조건을 충족하지만, 공공 행정 자동화 목적에서는 지시 수행 능력이 강화된 Instruct 모델인 본 모델이 더 적합하다고 판단했다.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">02</span>모델 기본 정보</h2>
+      <table>
+        <tr><td class="k">모델명</td><td>Qwen/Qwen3-4B-Instruct-2507</td></tr>
+        <tr><td class="k">개발 주체</td><td>Qwen Team / Alibaba Cloud 계열 Qwen 프로젝트</td></tr>
+        <tr><td class="k">모델 규모</td><td><span class="ok">약 4.02B parameters</span> (<code>safetensors.total = 4,022,468,096</code>). 1B 이상 7B 이하 조건 충족.</td></tr>
+        <tr><td class="k">라이선스</td><td>Apache 2.0</td></tr>
+        <tr><td class="k">모델 유형</td><td>Text Generation / Conversational / Instruct / Causal Language Model</td></tr>
+        <tr><td class="k">제외 대상 확인</td><td><span class="ok">해당 없음.</span> 이미지 전용, 음성 전용, 임베딩 전용 모델이 아니며, 파라미터도 7B를 초과하지 않는다.</td></tr>
+      </table>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+      <div class="body">
+        <p>모델 카드 공개 범위에서 전체 학습 데이터셋의 상세 목록은 완전히 공개되어 있지 않다. 다만 Qwen3 계열은 일반 지식, 코딩, 수학, 다국어 처리, 장문 문맥 이해를 목표로 사전학습 및 후처리 학습이 적용된 계열로 설명된다. 따라서 보고서에서는 “학습 데이터의 세부 출처는 모델 카드 공개 범위 내에서 제한적으로만 확인 가능하다”고 명시하는 것이 정확하다.</p>
+        <p>Qwen3 공식 기술 자료 기준으로 Qwen3 계열은 대규모 웹 문서, PDF 유사 문서에서 추출한 텍스트, 수학·코딩 합성 데이터, 장문 컨텍스트 데이터를 활용한 것으로 설명된다. 그러나 <code>Qwen/Qwen3-4B-Instruct-2507</code> 개별 모델의 전체 학습 데이터셋 명칭, 산업별 데이터 포함 비율, 한국어 데이터 비율, SFT·RLHF·DPO 세부 적용 여부는 모델 카드에 완전히 공개되어 있지 않으므로, 공개 범위 내에서는 제한적으로만 확인 가능하다.</p>
+        <p>선택 모델은 <code>Instruct</code> 버전이므로 사용자의 명령을 따르도록 후처리 학습된 모델이다. Hugging Face의 <code>tokenizer_config.json</code>에는 <code>system</code>, <code>user</code>, <code>assistant</code>, <code>tool_call</code>, <code>tool_response</code>를 처리하는 채팅 템플릿이 포함되어 있어 대화형 지시 수행과 도구 호출 기반 자동화에 활용할 수 있다.</p>
+        <p>공공기관 적용 시에는 원 모델을 그대로 사용하는 것보다 내부 보안 문서와 개인정보를 제거한 예시 데이터로 RAG를 구성하거나, 비식별화된 업무 매뉴얼·FAQ·서식 데이터로 별도 평가를 수행하는 방식이 적합하다.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+      <table>
+        <tr><td class="k">Architecture</td><td><code>Qwen3ForCausalLM</code>, <code>model_type: qwen3</code></td></tr>
+        <tr><td class="k">Context Length</td><td><code>max_position_embeddings: 262144</code>. 긴 행정문서, 계약서, 제안요청서, 회의록 등 장문 입력 처리에 유리하다.</td></tr>
+        <tr><td class="k">Hidden Size</td><td><code>hidden_size: 2560</code></td></tr>
+        <tr><td class="k">Layers</td><td><code>num_hidden_layers: 36</code></td></tr>
+        <tr><td class="k">Attention Heads</td><td><code>num_attention_heads: 32</code>, <code>num_key_value_heads: 8</code>, <code>head_dim: 128</code>. GQA 계열 구성을 통해 추론 효율을 높이는 구조다.</td></tr>
+        <tr><td class="k">Intermediate Size</td><td><code>intermediate_size: 9728</code></td></tr>
+        <tr><td class="k">Tokenizer</td><td><code>Qwen2Tokenizer</code>, <code>vocab_size: 151936</code>. 저장소에 <code>tokenizer.json</code>, <code>vocab.json</code>, <code>merges.txt</code>가 포함되어 BPE 기반 토크나이저 구성을 확인할 수 있다.</td></tr>
+        <tr><td class="k">Precision</td><td><code>torch_dtype: bfloat16</code>. 모델 가중치는 safetensors 형식으로 제공된다.</td></tr>
+      </table>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">05</span>모델 파일 구성</h2>
+      <div class="body">
+        <ul>
+          <li><code>README.md</code>: 모델 개요, 사용 방법, 라이선스, 주의사항 등 모델 카드 본문을 제공한다.</li>
+          <li><code>LICENSE</code>: Apache 2.0 라이선스 전문을 포함한다.</li>
+          <li><code>config.json</code>: 아키텍처, hidden size, layer 수, attention head 수, context length, dtype 등 모델 구조 정보를 담는다.</li>
+          <li><code>generation_config.json</code>: 텍스트 생성 시 기본 샘플링·종료 토큰 등 generation 설정을 담는다.</li>
+          <li><code>model-00001-of-00003.safetensors</code> ~ <code>model-00003-of-00003.safetensors</code>: 모델 가중치가 3개 shard로 분할 저장되어 있다.</li>
+          <li><code>model.safetensors.index.json</code>: 분할된 safetensors 가중치 파일과 각 파라미터 텐서의 매핑 정보를 제공한다.</li>
+          <li><code>tokenizer.json</code>, <code>tokenizer_config.json</code>, <code>vocab.json</code>, <code>merges.txt</code>: 텍스트를 토큰으로 변환하고 채팅 템플릿 및 특수 토큰을 처리하는 토크나이저 관련 파일이다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">06</span>활용 가능 업무</h2>
+      <div class="body">
+        <p>방위사업청과 같은 공공기관에서는 반복적인 문서 검토, 요약, 질의응답, 자료 정리 업무가 많다. 이 모델은 자체적으로 엑셀이나 PPTX 파일을 직접 편집하는 프로그램은 아니지만, 자동화 도구와 결합하면 실무에 필요한 중간 산출물을 생성할 수 있다.</p>
+        <ul>
+          <li><strong>행정문서 요약:</strong> 사업공고, 제안요청서, 회의록, 지침, 내부 보고자료를 핵심 쟁점·일정·담당부서·조치사항 중심으로 요약한다.</li>
+          <li><strong>민원·질의응답 초안:</strong> 공개 가능한 규정과 FAQ를 RAG로 연결하여 민원 답변 초안이나 내부 상담 답변 초안을 생성한다.</li>
+          <li><strong>엑셀 업무 자동화:</strong> 표 데이터를 JSON/CSV 구조로 정리하거나, <code>pandas</code>, <code>openpyxl</code> 코드를 생성해 반복 집계·분류·검증 작업을 보조한다.</li>
+          <li><strong>PPTX 보고서 초안:</strong> 사업 진행 현황, 위험요인, 일정, 예산, 조치계획을 슬라이드 목차와 bullet 초안으로 변환하고, <code>python-pptx</code> 자동 생성 스크립트 작성에 활용한다.</li>
+          <li><strong>계약·조달 문서 검토 보조:</strong> 반복되는 용어, 누락 항목, 일정 불일치, 평가 기준 표현을 검토하는 1차 점검 도구로 활용한다.</li>
+          <li><strong>업무 매뉴얼 검색:</strong> 내부 지침과 규정 문서를 벡터 검색 또는 키워드 검색과 결합하여 담당자가 필요한 조항을 빠르게 찾도록 지원한다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">06-1</span>EXAONE 모델과의 비교 기준 및 최종 판단</h2>
+      <div class="body">
+        <p>최종 후보로 <code>Qwen/Qwen3-4B-Instruct-2507</code>, <code>LGAI-EXAONE/EXAONE-4.0-1.2B</code>, <code>LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</code>를 비교하였다. 세 모델 모두 1B 이상 7B 이하의 텍스트 생성형 SLM 조건을 충족하지만, 한국 공공기관 업무 적용 관점에서는 한국어 처리 능력, 장문 문서 처리, 지시 수행, 도구 호출, RAG 및 파일 자동화 연계성, 라이선스 조건을 함께 평가해야 한다.</p>
+      </div>
+      <table>
+        <tr>
+          <td class="k">비교 기준</td>
+          <td><strong>Qwen3-4B-Instruct-2507</strong></td>
+          <td><strong>EXAONE-4.0-1.2B</strong></td>
+          <td><strong>EXAONE-3.5-2.4B-Instruct</strong></td>
+        </tr>
+        <tr>
+          <td class="k">모델 규모</td>
+          <td>4.0B. 7B 이하 조건 충족</td>
+          <td>1.07B. 7B 이하 조건 충족</td>
+          <td>2.14B. 7B 이하 조건 충족</td>
+        </tr>
+        <tr>
+          <td class="k">한국어 성능 근거</td>
+          <td>한국어 전용 수치는 모델 카드에 제한적이다. 다만 Qwen3 공식 설명에서 한국어를 포함한 119개 언어 지원을 명시한다.</td>
+          <td>KMMLU-Pro 42.7, KMMLU-Redux 46.9, KSM 60.6 등 한국어 평가 수치를 공개한다.</td>
+          <td>KoMT-Bench 7.24, LogicKor 8.51 등 한국어 대화·논리 평가 수치를 공개한다.</td>
+        </tr>
+        <tr>
+          <td class="k">일반 지식·추론</td>
+          <td>MMLU-Pro 69.6, MMLU-Redux 84.2, GPQA 62.0, AIME25 47.4로 세 후보 중 범용 지표가 가장 높다.</td>
+          <td>MMLU-Pro 59.3, MMLU-Redux 71.5, GPQA-Diamond 52.0, AIME25 45.2로 1.2B급 대비 강하다.</td>
+          <td>모델 카드상 LiveBench 33.0 중심으로 공개되어 있으며, 최신 추론형 지표는 EXAONE 4.0보다 제한적이다.</td>
+        </tr>
+        <tr>
+          <td class="k">지시 수행</td>
+          <td>IFEval 83.4. 행정문서 요약, 정해진 출력 형식, JSON/표 변환 같은 지시 수행에 유리하다.</td>
+          <td>IFEval 67.8 또는 non-reasoning 기준 74.7. 경량 모델로는 준수하지만 Qwen3보다 낮다.</td>
+          <td>IFEval 73.6. 한국어 대화형 지시에는 장점이 있으나 Qwen3보다는 낮다.</td>
+        </tr>
+        <tr>
+          <td class="k">RAG·도구 호출·자동화</td>
+          <td>BFCL-v3 61.9, TAU-Retail 48.7 등 agentic/tool use 지표가 공개되어 있다. Qwen-Agent, vLLM, SGLang 지원도 좋아 RAG와 내부 도구 호출 자동화에 적합하다.</td>
+          <td>BFCL-v3 52.9 또는 55.7. EXAONE 4.0은 tool use를 명시하지만 1.2B 모델 한계가 있다.</td>
+          <td>도구 호출 전용 지표가 제한적이다. 일반 행정 대화와 한국어 응답에는 적합하지만 자동화 에이전트 근거는 상대적으로 약하다.</td>
+        </tr>
+        <tr>
+          <td class="k">장문 문서 처리</td>
+          <td>262,144 토큰 native context. 긴 제안요청서, 회의록, 지침, 계약 문서 분석에 가장 유리하다.</td>
+          <td>65,536 토큰 context. 중간 규모 행정문서에는 충분하지만 Qwen3보다 짧다.</td>
+          <td>32,768 토큰 context. 일반 문서 요약에는 가능하지만 대형 문서 묶음 처리에는 상대적으로 불리하다.</td>
+        </tr>
+        <tr>
+          <td class="k">라이선스·도입성</td>
+          <td>Apache 2.0. 공공기관 PoC, 내부 검증, 서비스화 검토 시 법무·계약 부담이 상대적으로 낮다.</td>
+          <td>EXAONE AI Model License Agreement 1.2 - NC. 연구·교육 중심이며 실무 서비스 적용 전 별도 검토가 필요하다.</td>
+          <td>EXAONE AI Model License Agreement 1.1 - NC. 연구·교육 중심이며 운영 시스템 적용 전 별도 검토가 필요하다.</td>
+        </tr>
+      </table>
+      <div class="body" style="margin-top:14px">
+        <p>한국어 전용 벤치마크 근거만 보면 EXAONE 계열이 더 명확하다. 특히 EXAONE-4.0-1.2B는 KMMLU-Pro, KMMLU-Redux, KSM을 공개하고, EXAONE-3.5-2.4B-Instruct는 KoMT-Bench와 LogicKor를 공개한다. 따라서 “한국어 모델임을 강조하는 보고서”라면 EXAONE 선택도 설득력이 있다.</p>
+        <p>그러나 방위사업청과 같은 한국 공공기관의 반복 행정업무 자동화는 단순 한국어 대화보다 장문 문서 처리, 지시 수행, RAG 검색 결과 기반 답변, 엑셀/PPTX 자동화를 위한 구조화 출력, 내부 도구 호출, 라이선스 유연성이 중요하다. 이 기준에서는 Qwen3-4B-Instruct-2507이 가장 균형이 좋다.</p>
+        <p>Qwen3의 약점은 한국어 전용 평가 수치가 부족하다는 점이다. 또한 Qwen3 계열 일부 사용 후기에서는 언어 혼합, 반복, 추론 루프 같은 문제가 언급되므로 한국어 행정문서 적용 시 낮은 temperature, 명확한 출력 형식, RAG 근거 제시, 담당자 검토 절차가 필요하다. 다만 Qwen3-4B-Instruct-2507 자체에 대해 한국어 성능이 명확히 부정적이라는 신뢰도 높은 공식 자료는 확인되지 않았다.</p>
+        <p><strong>최종 판단:</strong> 한국어 전용 성능 근거는 EXAONE이 강하지만, 한국 공공기관의 실제 업무 자동화까지 고려한 최종 모델은 <code>Qwen/Qwen3-4B-Instruct-2507</code>로 선정한다.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">07</span>한계와 주의사항</h2>
+      <div class="body">
+        <ul>
+          <li><strong>환각 가능성:</strong> 모델은 실제 법령, 규정, 계약 조건을 잘못 생성할 수 있다. 최종 판단은 반드시 담당자가 원문 문서와 대조해야 한다.</li>
+          <li><strong>보안 이슈:</strong> 방위사업 관련 문서는 민감정보와 보안정보가 포함될 수 있으므로, 외부 API 사용 시 원문 입력 금지, 비식별화, 망분리, 접근통제, 로그 관리가 필요하다.</li>
+          <li><strong>한국어 검증 필요:</strong> Qwen 계열은 다국어 처리에 강점이 있으나, 기관 내부 용어, 군수·조달·계약 전문용어, 한글 서식 표현은 별도 평가가 필요하다.</li>
+          <li><strong>파일 편집 한계:</strong> LLM은 엑셀·PPTX 파일을 직접 안정적으로 조작하는 도구가 아니다. 실제 파일 생성은 <code>pandas</code>, <code>openpyxl</code>, <code>python-pptx</code> 같은 검증 가능한 프로그램과 연계해야 한다.</li>
+          <li><strong>학습 데이터 불투명성:</strong> 모델 카드만으로 전체 학습 데이터의 세부 출처를 완전히 확인하기 어렵다. 공공기관 도입 전 저작권, 개인정보, 보안 적합성 검토가 필요하다.</li>
+          <li><strong>책임성:</strong> 자동 생성된 답변을 대민 답변이나 공식 보고서에 그대로 사용하면 안 되며, 검토자 승인 절차와 변경 이력 관리가 필요하다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">08</span>종합 의견</h2>
+      <div class="body">
+        <p><code>Qwen/Qwen3-4B-Instruct-2507</code>은 과제의 모델 규모 조건을 명확히 충족하면서도, Instruct 모델이라는 점에서 공공기관의 반복 행정업무 자동화 주제로 분석하기 적합하다. 7B를 초과하지 않는 4B급 모델이므로 로컬 또는 기관 내부 서버에서 POC를 수행하기에도 상대적으로 부담이 낮다.</p>
+        <p>방위사업청 업무에 적용한다면 “모델 단독 사용”보다는 보안 검토를 거친 내부 문서 검색 시스템, 파일 처리 자동화 코드, 승인 워크플로와 결합하는 방식이 바람직하다. 예를 들어 사용자가 한글 문서나 엑셀 자료를 업로드하면, 시스템이 텍스트와 표를 추출하고, 모델이 요약·분류·검증 규칙을 제안한 뒤, 최종 파일 생성은 검증 가능한 코드가 수행하는 구조가 적합하다.</p>
+        <p>도입 전에는 한국어 행정문서 요약 정확도, 표 데이터 변환 정확도, 민감정보 노출 위험, 답변 근거 제시 능력, 내부 규정 질의응답 정확도에 대한 별도 평가셋을 만들고, 담당자 검토가 포함된 제한적 POC를 먼저 수행하는 것이 필요하다.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2><span class="num">09</span>참고 링크</h2>
+      <div class="body">
+        <ul>
+          <li>Hugging Face 모델 페이지: <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507">https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507</a></li>
+          <li>모델 설정 파일: <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/blob/main/config.json">config.json</a></li>
+          <li>토크나이저 설정 파일: <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/blob/main/tokenizer_config.json">tokenizer_config.json</a></li>
+          <li>라이선스: <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/blob/main/LICENSE">Apache 2.0 LICENSE</a></li>
+          <li>Qwen3 기술 보고서: <a href="https://arxiv.org/abs/2505.09388">https://arxiv.org/abs/2505.09388</a></li>
+          <li>EXAONE-4.0-1.2B 모델 페이지: <a href="https://huggingface.co/LGAI-EXAONE/EXAONE-4.0-1.2B">https://huggingface.co/LGAI-EXAONE/EXAONE-4.0-1.2B</a></li>
+          <li>EXAONE-3.5-2.4B-Instruct 모델 페이지: <a href="https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct">https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</a></li>
+          <li>EXAONE-4.0 라이선스: <a href="https://huggingface.co/LGAI-EXAONE/EXAONE-4.0-1.2B/blob/main/LICENSE">EXAONE AI Model License Agreement 1.2 - NC</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="label">Submission · 제출 정보</div>
+      <p><strong>GitHub Repository 주소:</strong> https://github.com/본인아이디/slm-model-report-방사청-정연호</p>
+      <p><strong>제출 파일명:</strong> 방사청_정연호_slm_report.html</p>
+      <p class="print-note">최종 제출 전 모델 링크 접속 여부, 파일명이 과제 예시와 맞는지, GitHub Repository가 Public인지 확인한다.</p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

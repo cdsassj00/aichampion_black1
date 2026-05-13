@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<!-- saved from url=(0155)file:///C:/Users/roche/Downloads/%ED%95%9C%EA%B5%AD%ED%86%A0%EC%A7%80%EC%A3%BC%ED%83%9D%EA%B3%B5%EC%82%AC_%EB%B0%95%ED%9A%A8%EC%B2%A0_slm_report%20(2).html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style>body {transition: opacity ease-in 0.2s; } 
+body[unresolved] {opacity: 0; display: block; overflow: hidden; position: relative; } 
+</style>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="./토지주택공사_박효철_slm_report_files/pretendardvariable.css" rel="stylesheet">
+<link href="./토지주택공사_박효철_slm_report_files/css2" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+.link-list a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-border);transition:color .15s,border-color .15s}
+.link-list a:hover{color:var(--accent-deep);border-color:var(--accent)}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+}
+</style>
+</head>
+<body>
+
+<div class="tb">
+  <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="editBtn" onclick="toggleEdit()">✏️ Edit</button>
+  <button class="tb-save" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+<script>
+function toggleEdit(){
+  const btn = document.getElementById('editBtn');
+  const editables = document.querySelectorAll('.v, .body, .kv-table td.v, .callout p');
+  const isActive = btn.classList.toggle('active');
+  editables.forEach(el => {
+    el.contentEditable = isActive ? 'true' : 'false';
+  });
+  btn.textContent = isActive ? '✅ Done' : '✏️ Edit';
+}
+</script>
+
+<div class="stack">
+
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+    </div>
+
+    <div class="cv-center">
+      <div class="cv-year">Day 1 · Assignment 01</div>
+      <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+      <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+    </div>
+
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Track</div><div class="m-v">SLM Research</div></div>
+        <div class="m"><div class="m-l">Format</div><div class="m-v">HTML Report</div></div>
+        <div class="m"><div class="m-l">Submission</div><div class="m-v">GitHub Public Repo</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      AI 전문인재 과정
+      <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+    </div>
+    <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+  </div>
+</section>
+
+<section class="sheet">
+
+  <div class="id-block">
+    <div class="lbl">Student Identity · 수강생 정보</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">수강생 소속</span>
+        <span class="v" contenteditable="false">한국토지주택공사</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">수강생 이름</span>
+        <span class="v" contenteditable="false">박효철</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">선택 모델명</span>
+        <span class="v" contenteditable="false">Qwen2.5-7B-Instruct</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v" contenteditable="false">https://huggingface.co/Qwen/Qwen2.5-7B-Instruct</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body" contenteditable="false">한국토지주택공사(LH)의 방대한 사내 규정, 사업 지침서 및 PPTX 형식의 보고서를 기반으로 하는 RAG(검색 증강 생성) 시스템 구축에 최적화된 성능을 제공하기 때문입니다. Qwen2.5-7B-Instruct 모델은 최대 128K 토큰(131,072 토큰)의 매우 긴 문맥(Context Length)을 처리할 수 있어 다수의 문서를 한 번에 참조해야 하는 실무 환경에 적합하며, 구조화된 데이터(표, JSON 등)의 이해도가 우수하다는 Hugging Face 공식 모델 카드의 명시적 근거를 바탕으로 선정하였습니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">모델명</td><td class="v" contenteditable="false">Qwen/Qwen2.5-7B-Instruct</td></tr>
+      <tr><td class="k">개발 주체</td><td class="v" contenteditable="false">Qwen (Alibaba Cloud)</td></tr>
+      <tr><td class="k">모델 규모</td><td class="v" contenteditable="false">7.61B 파라미터 (Non-Embedding: 6.53B)</td></tr>
+      <tr><td class="k">라이선스</td><td class="v" contenteditable="false">Apache-2.0</td></tr>
+      <tr><td class="k">모델 유형</td><td class="v" contenteditable="false">Causal Language Model (Instruction-tuned)</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body" contenteditable="false">Hugging Face 공식 모델 카드에 따르면, 본 모델은 'Pretraining &amp; Post-training' 단계를 거쳤습니다. 특화된 전문가 모델의 이점을 활용해 코딩 및 수학 능력이 향상되었으며, 지시 이행(Instruction Following) 능력을 높이기 위해 Instruction-tuned 되었습니다(모델명의 '-Instruct' 접미사가 이를 증명). Qwen 시리즈 공식 기술 문서(arXiv 2407.10671) 및 GitHub 문서에 따르면, 사전학습 이후 지도 학습 파인튜닝(SFT)과 직접 선호도 최적화(DPO, Direct Preference Optimization) 기법이 적용된 것으로 공개되어 있습니다. 다만, 사전 학습 데이터셋의 세부 구성 출처나 데이터 비율 등의 상세 정보는 모델 카드 내에 공개되어 있지 않습니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">Architecture</td><td class="v" contenteditable="false">Transformer with RoPE, SwiGLU, RMSNorm, Attention QKV bias</td></tr>
+      <tr><td class="k">Context Length</td><td class="v" contenteditable="false">128K 토큰 (131,072 토큰) · 기본 config: 32,768 / YaRN 기법으로 확장 · 최대 생성 길이: 8,192 토큰</td></tr>
+      <tr><td class="k">Hidden Size</td><td class="v" contenteditable="false">3,584 (config.json num_hidden_layers 기준)</td></tr>
+      <tr><td class="k">Layers</td><td class="v" contenteditable="false">28 (num_hidden_layers)</td></tr>
+      <tr><td class="k">Attention Heads</td><td class="v" contenteditable="false">GQA 적용 (Q를 위한 헤드 28개, KV를 위한 헤드 4개)</td></tr>
+      <tr><td class="k">Tokenizer</td><td class="v" contenteditable="false">Tiktoken 기반 BPE · Vocabulary 크기: 152,064 토큰 (config.json vocab_size 기준)</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body" contenteditable="false">아래는 <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-1M/tree/main" target="_blank">Hugging Face 공식 저장소 (tree/main)</a>에서 직접 확인한 실제 파일 목록과 각 파일의 역할입니다. 총 저장소 크기는 약 <b>15.2 GB</b>입니다.<br><br>
+1. <b>config.json</b> (825 B): 모델 아키텍처(레이어 수, 어텐션 헤드, hidden size 등) 및 하이퍼파라미터를 정의하는 핵심 설정 파일입니다.<br>
+2. <b>generation_config.json</b> (243 B): top_p, temperature, max_new_tokens 등 텍스트 생성 시 사용되는 기본 파라미터를 제어합니다.<br>
+3. <b>model-00001~00004-of-00004.safetensors</b> (각 3.56~3.95 GB, 합계 약 15.2 GB): 모델의 실제 가중치(Weights) 데이터를 4개 샤드(Shard)로 분할 저장한 파일입니다. 기존 .pkl/.bin 포맷 대비 악성 코드 실행 위험을 차단한 안전한 Safetensors 포맷을 채택하였습니다.<br>
+4. <b>model.safetensors.index.json</b> (27.8 kB): 4개로 분할된 가중치 샤드 파일 간의 레이어 매핑 정보를 담고 있어, 모델 로딩 시 각 파라미터가 어느 샤드에 위치하는지 참조하는 인덱스 파일입니다.<br>
+5. <b>merges.txt</b> (1.67 MB): BPE(Byte-Pair Encoding) 토크나이저의 병합 규칙이 기록된 파일로, 텍스트를 서브워드 단위 토큰으로 분해하는 기준을 정의합니다.<br>
+6. <b>sparse_attention_config.json</b>: 1M 컨텍스트 처리를 위한 Sparse Attention(희소 어텐션) 설정 파일로, 1M 버전 특유의 장문 추론 최적화 구성 정보를 담고 있습니다.<br>
+7. <b>LICENSE / README.md / .gitattributes</b>: Apache-2.0 라이선스 원문, 모델 사용 안내 문서, Git LFS 대용량 파일 관리 설정 파일입니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body" contenteditable="false">한국토지주택공사 내부에 축적된 방대한 규정, 사업 지침서, 그리고 PPTX 형태의 정책 보고서 등을 기반으로 실무자의 질의에 신속하고 정확하게 답변하는 '내부 문서 기반 RAG QA 시스템' 구축 업무에 도입할 수 있습니다. 128K 규모의 Context Window를 통해 수십 페이지 분량의 문서를 청크(Chunk) 단위로 과도하게 쪼개지 않고 원문 전체 문맥을 유지한 채 검색 및 요약 업무를 수행할 수 있습니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body" contenteditable="false">텍스트와 구조화된 데이터(JSON, 마크다운 표 등)에 대한 이해도는 뛰어나나, PPTX 파일 내부에 존재하는 복잡한 시각적 다이어그램, 이미지 텍스트, 비정형 그래프 등을 순수 텍스트로 파싱하여 입력할 경우 '문맥 유실'이 발생할 기술적 위험이 존재합니다. 또한 긴 문맥을 처리할수록 연산량이 기하급수적으로 증가하므로, 대용량 VRAM 확보 및 vLLM 같은 추론 최적화 프레임워크 구축 등 물리적 하드웨어 인프라 제약이 따릅니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body" contenteditable="false">Qwen2.5-7B-Instruct 모델은 7B 파라미터 체급 대비 긴 문맥 파악 및 지시 이행 능력이 입증되어 RAG 시스템 구축에 매우 유리합니다. 하지만 시각적 데이터가 많은 PPTX 문서의 특성상 모델 자체의 추론 성능보다는 입력되는 텍스트의 구조화 품질이 성패를 좌우합니다. 따라서 즉각적인 전사 도입보다는, 복잡한 레이아웃 문서를 마크다운으로 변환해 주는 '문서 파서(Parser)'와의 연동 테스트를 선행하여 데이터 전처리 파이프라인의 완성도부터 검증하는 기술적 POC 절차를 권고합니다.</div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list" id="refList">
+      <li>Hugging Face 모델 페이지: <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct" target="_blank">https://huggingface.co/Qwen/Qwen2.5-7B-Instruct</a></li>
+      <li>Hugging Face 1M 확장 모델 카드: <a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-1M" target="_blank">https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-1M</a></li>
+      <li>공식 GitHub 저장소 (Qwen2.5): <a href="https://github.com/QwenLM/Qwen2.5" target="_blank">https://github.com/QwenLM/Qwen2.5</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <div class="label">Submission · 제출 정보</div>
+    <p contenteditable="false"><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong>&nbsp;<span style="font-size: 14.6667px;">https://github.com/rocheol2/slm-model-report-LH-ParkHyocheol</span></p>
+    <p contenteditable="false"><strong style="color:var(--ink);font-weight:700">파일명 예시:</strong> 한국토지주택공사_박효철_slm_report.html</p>
+  </div>
+
+</section>
+
+</div>
+
+</body></html>

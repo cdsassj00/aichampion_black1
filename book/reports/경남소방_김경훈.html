@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>경남소방 김경훈 · SLM 모델 조사 보고서 · Kanana-1.5-2.1B-Instruct</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F2EA;
+    --paper: #FBF8F1;
+    --ink: #1A1814;
+    --ink-soft: #4A453D;
+    --muted: #8C857A;
+    --line: #D9D2C3;
+    --line-soft: #E8E3D7;
+    --accent: #8B2C2C;
+    --accent-soft: #C0594B;
+    --gold: #A68A4E;
+    --code-bg: #2A2620;
+    --code-text: #F0E9D8;
+    --serif: "Noto Serif KR", "Pretendard", serif;
+    --sans: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: "JetBrains Mono", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+  }
+
+  /* Background texture */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(139,44,44,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(166,138,78,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header.masthead {
+    padding: 80px 0 56px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .masthead-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 56px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .masthead-top .left {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .seal {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 14px;
+    transform: rotate(-3deg);
+    position: relative;
+  }
+  .seal::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--accent);
+    opacity: 0.4;
+  }
+
+  h1.title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  h1.title em {
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .subtitle {
+    font-size: 16px;
+    color: var(--ink-soft);
+    max-width: 600px;
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell {
+    background: var(--paper);
+    padding: 18px 20px;
+  }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .meta-cell .value {
+    font-family: var(--serif);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* IDENTITY BLOCK */
+  .identity {
+    margin: 56px 0 32px;
+    padding: 28px 32px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    position: relative;
+  }
+  .identity-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .identity-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px 40px;
+  }
+  .identity-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px dotted var(--line);
+  }
+  .identity-row .key {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    min-width: 90px;
+  }
+  .identity-row .val {
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .placeholder {
+    color: var(--muted);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* SECTIONS */
+  section.report-section {
+    padding: 64px 0 24px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  section.report-section:last-of-type {
+    border-bottom: none;
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .section-number {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    position: relative;
+    padding-right: 24px;
+  }
+  .section-number::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 12px;
+    height: 1px;
+    background: var(--accent);
+  }
+  h2.section-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  .section-body p {
+    margin-bottom: 16px;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+  .section-body p strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .section-body em.kw {
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 500;
+    border-bottom: 1px dotted var(--accent-soft);
+    padding-bottom: 1px;
+  }
+
+  /* SPEC TABLE */
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  .spec-table th, .spec-table td {
+    text-align: left;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .spec-table th {
+    background: var(--paper);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    width: 240px;
+    vertical-align: top;
+  }
+  .spec-table td {
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+  .spec-table td code {
+    font-family: var(--mono);
+    background: rgba(139,44,44,0.06);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-size: 13px;
+  }
+  .spec-table tr:last-child th,
+  .spec-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* FILE LIST */
+  .file-list {
+    margin: 24px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .file-item {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 32px;
+    padding: 18px 0;
+    border-bottom: 1px dotted var(--line-soft);
+  }
+  .file-item:last-child {
+    border-bottom: none;
+  }
+  .file-item .fname {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .file-item .fdesc {
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  /* USE CASE GRID */
+  .usecase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 24px 0;
+  }
+  .usecase {
+    background: var(--paper);
+    padding: 24px;
+  }
+  .usecase .uc-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+  .usecase h4 {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .usecase p {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  /* LIMITS */
+  .limit-list {
+    margin: 16px 0;
+    padding-left: 0;
+    list-style: none;
+  }
+  .limit-list li {
+    position: relative;
+    padding: 10px 0 10px 32px;
+    border-bottom: 1px dotted var(--line-soft);
+    color: var(--ink-soft);
+    font-size: 14.5px;
+  }
+  .limit-list li:last-child { border-bottom: none; }
+  .limit-list li::before {
+    content: "△";
+    position: absolute;
+    left: 4px;
+    top: 11px;
+    color: var(--accent);
+    font-size: 11px;
+  }
+  .limit-list li strong {
+    color: var(--ink);
+    font-weight: 600;
+    margin-right: 6px;
+  }
+
+  /* PULL QUOTE */
+  .pullquote {
+    margin: 32px 0;
+    padding: 32px 36px;
+    background: linear-gradient(180deg, var(--paper) 0%, rgba(251,248,241,0.5) 100%);
+    border-left: 3px solid var(--gold);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--ink);
+    font-style: italic;
+  }
+  .pullquote::before {
+    content: "“";
+    font-family: var(--serif);
+    font-size: 48px;
+    color: var(--gold);
+    line-height: 0;
+    vertical-align: -16px;
+    margin-right: 8px;
+  }
+
+  /* LINKS */
+  .ref-list {
+    list-style: none;
+    margin: 16px 0;
+  }
+  .ref-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .ref-list li:last-child { border-bottom: none; }
+  .ref-list .ref-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 30px;
+  }
+  .ref-list .ref-title {
+    flex: 1;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .ref-list a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+    word-break: break-all;
+  }
+  .ref-list a:hover {
+    border-bottom-color: var(--accent);
+  }
+
+  /* BENCHMARK */
+  .bench-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .bench-table thead {
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--line);
+  }
+  .bench-table th {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 12px 14px;
+    text-align: right;
+    font-weight: 500;
+  }
+  .bench-table th:first-child {
+    text-align: left;
+  }
+  .bench-table td {
+    padding: 12px 14px;
+    text-align: right;
+    border-bottom: 1px dotted var(--line-soft);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .bench-table td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .bench-table tr.highlight td {
+    background: rgba(139,44,44,0.04);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .bench-table tbody {
+    border-bottom: 2px solid var(--ink);
+  }
+
+  /* FOOTER */
+  footer.report-footer {
+    margin-top: 64px;
+    padding: 48px 0 80px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+  }
+  .footer-mark {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .footer-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 720px) {
+    .container { padding: 0 20px; }
+    header.masthead { padding: 48px 0 36px; }
+    .meta-grid { grid-template-columns: repeat(2, 1fr); }
+    .identity-grid { grid-template-columns: 1fr; }
+    .usecase-grid { grid-template-columns: 1fr; }
+    .file-item { grid-template-columns: 1fr; gap: 8px; }
+    .section-head { flex-direction: column; gap: 8px; }
+    h1.title { font-size: 36px; }
+    h2.section-title { font-size: 22px; }
+    .spec-table th { width: auto; display: block; padding-bottom: 4px; }
+    .spec-table td { display: block; padding-top: 0; padding-bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ===================== MASTHEAD ===================== -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <div class="left">
+        <span class="seal">消</span>
+        <span>경남소방본부 · 김경훈 · AI 전문인재 과정 2026</span>
+      </div>
+      <div>Day 1 · Assignment 01</div>
+    </div>
+
+    <h1 class="title">
+      Hugging Face <em>SLM</em><br>모델 조사 보고서
+    </h1>
+    <p class="subtitle">
+      경남소방 현장·예방·구급 행정에서의 활용을 전제로, 1B~7B 규모의 Small Language Model을
+      모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성 차원에서 해부한 1인 1리포트입니다.
+    </p>
+
+    <div class="meta-grid">
+      <div class="meta-cell">
+        <div class="label">Track</div>
+        <div class="value">SLM Research</div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Format</div>
+        <div class="value">HTML Report</div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Submission</div>
+        <div class="value">GitHub Public Repo</div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Subject Model</div>
+        <div class="value">Kanana-1.5-2.1B</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== IDENTITY ===================== -->
+  <div class="identity">
+    <div class="identity-label">● Student Identity · 수강생 정보</div>
+    <div class="identity-grid">
+      <div class="identity-row">
+        <span class="key">수강생 소속</span>
+        <span class="val">경남소방본부</span>
+      </div>
+      <div class="identity-row">
+        <span class="key">수강생 이름</span>
+        <span class="val">김경훈</span>
+      </div>
+      <div class="identity-row">
+        <span class="key">선택 모델명</span>
+        <span class="val">Kanana-1.5-2.1B-Instruct-2505</span>
+      </div>
+      <div class="identity-row">
+        <span class="key">HF 링크</span>
+        <span class="val"><a href="https://huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:13px;">huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505</a></span>
+      </div>
+      <div class="identity-row" style="grid-column: 1 / -1;">
+        <span class="key">GitHub Repo</span>
+        <span class="val"><a href="https://github.com/a01068781612-dot/slm-model-report-gnfire-kimkh" target="_blank" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:13px;">github.com/a01068781612-dot/slm-model-report-gnfire-kimkh</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 01 모델 선택 이유 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">01</div>
+      <h2 class="section-title">모델 선택 이유</h2>
+    </div>
+    <div class="section-body">
+      <p>
+        소방 조직에서 SLM을 도입하려면 일반 행정과는 다른 세 가지 조건을 동시에 만족해야 한다.
+        <em class="kw">현장 무선·119 신고 데이터의 외부 유출 차단</em>,
+        <em class="kw">한국어 구어체와 소방 전문용어의 동시 이해</em>,
+        그리고 <em class="kw">소방서·119안전센터급 하드웨어에서 구동 가능한 경량 규모</em>이다.
+        Kanana-1.5-2.1B-Instruct-2505는 이 세 조건을 모두 충족한다.
+      </p>
+      <p>
+        첫째, <strong>Apache 2.0 라이선스</strong>로 공개되어 상업적·공공기관 활용에 제약이 없다.
+        LG의 EXAONE이나 카카오의 1세대 Kanana-Nano가 CC-BY-NC-4.0인 것과 달리,
+        Kanana 1.5 시리즈 중 2.1B·8B는 Apache 2.0이라 소방 정보시스템과의 통합·재배포에 법적 부담이 적다.
+      </p>
+      <p>
+        둘째, 한국어 평가에서 의미 있는 성능을 보인다.
+        <strong>KoMT-Bench 6.54점, KMMLU(CoT) 32.93점, HAERAE 77.46점</strong>으로
+        동급(2B) 모델 중에서는 한국어 행정·법률·교양 도메인 이해도가 높은 편이며,
+        영어(MMLU 53.87, MT-Bench 7.01)도 동반 가능해 외국인 신고·국제 협력 문서 등 이중언어 처리에도 적합하다.
+      </p>
+      <p>
+        셋째, <strong>2.1B 파라미터로 BF16 기준 약 4GB</strong>의 VRAM 만으로 추론 가능하며,
+        Q4 양자화 시 <strong>1~2GB 수준으로 소방서·119안전센터 단위의 일반 GPU·사내 서버에서 직접 구동</strong>할 수 있어
+        119 신고 내용·환자 정보·현장 보고서 등 민감 데이터를 외부 API에 보내지 않고도
+        분류·요약·검색을 구축할 수 있다.
+        나아가 <strong>네이티브 32K, YaRN 적용 시 128K 컨텍스트</strong>를 지원해
+        소방기본법·화재예방법·시행규칙·매뉴얼 같은 장문 법령을 한 번에 입력해 질의응답이 가능하다는 점이 결정적이었다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 02 모델 기본 정보 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">02</div>
+      <h2 class="section-title">모델 기본 정보</h2>
+    </div>
+    <div class="section-body">
+      <table class="spec-table">
+        <tr>
+          <th>모델명</th>
+          <td><code>kakaocorp/kanana-1.5-2.1b-instruct-2505</code></td>
+        </tr>
+        <tr>
+          <th>개발 주체</th>
+          <td>카카오(Kakao Corp.) · Kanana LLM Team</td>
+        </tr>
+        <tr>
+          <th>모델 규모</th>
+          <td>약 2.1B (2,100M) 파라미터 · 텐서 타입 BF16</td>
+        </tr>
+        <tr>
+          <th>라이선스</th>
+          <td><strong>Apache 2.0</strong> (상업적 이용 · 수정 · 재배포 가능)</td>
+        </tr>
+        <tr>
+          <th>모델 유형</th>
+          <td>Instruct · 대화형 / 명령 수행 · Bilingual(한국어·영어)</td>
+        </tr>
+        <tr>
+          <th>공개 시기</th>
+          <td>2025년 5월 23일 (Kanana 1.5 시리즈) · arXiv 2502.18934</td>
+        </tr>
+        <tr>
+          <th>관련 모델</th>
+          <td>kanana-1.5-8b-instruct-2505 (상위) · kanana-nano-2.1b-instruct (전 세대, CC-BY-NC-4.0)</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== 03 학습 데이터와 튜닝 방식 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">03</div>
+      <h2 class="section-title">학습 데이터와 튜닝 방식</h2>
+    </div>
+    <div class="section-body">
+      <p>
+        Kanana는 한국어·영어 이중언어 모델로,
+        Technical Report(arXiv 2502.18934)에 따르면 사전학습 단계에서
+        <em class="kw">고품질 데이터 필터링(high-quality data filtering)</em>,
+        <em class="kw">단계적 사전학습(staged pre-training)</em>,
+        <em class="kw">depth up-scaling</em>,
+        <em class="kw">pruning &amp; distillation</em>을 결합한
+        '컴퓨트 효율적' 학습 전략을 사용했다.
+        구체적인 데이터셋 명세(웹·도서·코드 비율, 출처 등)는 공개 범위 내에서는 일부만 확인된다.
+      </p>
+
+      <p>
+        후처리 단계에서는 일반적인 채팅 모델의 표준 파이프라인을 따른다.
+      </p>
+
+      <table class="spec-table">
+        <tr>
+          <th>Supervised Fine-Tuning</th>
+          <td>지시-응답 쌍을 활용한 SFT로 명령 수행 능력 학습</td>
+        </tr>
+        <tr>
+          <th>Preference Optimization</th>
+          <td>인간 선호도 기반 정렬(선호도 최적화). 1.5에서 후처리 프로세스 정제</td>
+        </tr>
+        <tr>
+          <th>1.5 버전 강화 영역</th>
+          <td>코딩 · 수학 · Function Calling · 자연스러운 대화 품질</td>
+        </tr>
+        <tr>
+          <th>RLHF / DPO 명시 여부</th>
+          <td>모델 카드 공개 범위에서는 명시되지 않음 (선호도 최적화 표현으로 통칭)</td>
+        </tr>
+        <tr>
+          <th>개인정보 정책</th>
+          <td><strong>카카오 사용자 데이터는 사전학습·후처리 어디에도 포함되지 않음</strong></td>
+        </tr>
+      </table>
+
+      <p>
+        특히 모델 카드에 명시된 "Neither the pre-training nor the post-training data includes Kakao user data" 문구는
+        공공기관 도입 시 <em class="kw">개인정보 보호 리스크 검토</em> 측면에서 의미 있는 진술이다.
+        다만 한국 행정 도메인(법령·고시·민원)에 특화된 데이터로 학습되었는지는 공개되지 않았으므로,
+        실제 도입 전 도메인 파인튜닝(LoRA·QLoRA)이 권장된다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 04 파라미터 및 구조적 특징 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">04</div>
+      <h2 class="section-title">파라미터 및 구조적 특징</h2>
+    </div>
+    <div class="section-body">
+      <table class="spec-table">
+        <tr>
+          <th>Architecture</th>
+          <td><code>LlamaForCausalLM</code> 계열 · Llama 호환 디코더 전용 트랜스포머</td>
+        </tr>
+        <tr>
+          <th>Context Length</th>
+          <td><strong>32,768 토큰</strong> 네이티브 · YaRN 적용 시 <strong>128K</strong>까지 확장</td>
+        </tr>
+        <tr>
+          <th>Hidden Size</th>
+          <td><code>config.json</code> 직접 확인 권장 (Llama 계열 2B는 일반적으로 2048 수준)</td>
+        </tr>
+        <tr>
+          <th>Layers</th>
+          <td><code>num_hidden_layers</code> · 2.1B 규모로 약 24~30 레이어 (정확값은 config.json 확인)</td>
+        </tr>
+        <tr>
+          <th>Attention</th>
+          <td>Grouped Query Attention(GQA) · <code>num_attention_heads</code> &gt; <code>num_key_value_heads</code></td>
+        </tr>
+        <tr>
+          <th>Position Encoding</th>
+          <td>RoPE · YaRN 스케일링으로 32K → 128K 확장 가능</td>
+        </tr>
+        <tr>
+          <th>Tokenizer</th>
+          <td>BPE 기반 (Llama 토크나이저 호환) · 한국어·영어 이중언어 처리에 최적화</td>
+        </tr>
+        <tr>
+          <th>Tensor Type</th>
+          <td><code>bfloat16</code> (BF16) · FP16/Q4/Q8 양자화 변환본 다수 공개</td>
+        </tr>
+      </table>
+
+      <p style="margin-top:20px;font-size:13.5px;color:var(--muted);">
+        ※ 정확한 <code style="font-family:var(--mono);color:var(--accent);">hidden_size</code>,
+        <code style="font-family:var(--mono);color:var(--accent);">num_hidden_layers</code>,
+        <code style="font-family:var(--mono);color:var(--accent);">vocab_size</code> 값은
+        Hugging Face 저장소의 <strong>config.json</strong>을 직접 다운로드해 확인하는 것이 정확하다.
+        본 보고서는 모델 카드와 기술 보고서에서 명시적으로 공개된 정보를 기준으로 정리한다.
+      </p>
+
+      <h3 style="font-family:var(--serif);font-size:18px;font-weight:500;margin:28px 0 12px;color:var(--ink);">
+        벤치마크 성능 (Instruct, 모델 카드 공개 수치)
+      </h3>
+      <table class="bench-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>MT-Bench</th>
+            <th>KoMT-Bench</th>
+            <th>IFEval</th>
+            <th>GSM8K</th>
+            <th>MATH</th>
+            <th>KMMLU</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight">
+            <td>Kanana-1.5-2.1B</td>
+            <td>7.01</td>
+            <td>6.54</td>
+            <td>68.61</td>
+            <td>81.43</td>
+            <td>60.62</td>
+            <td>32.93</td>
+          </tr>
+          <tr>
+            <td>Kanana-Nano-2.1B</td>
+            <td>6.40</td>
+            <td>5.90</td>
+            <td>71.97</td>
+            <td>72.32</td>
+            <td>29.26</td>
+            <td>38.51</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:8px;">
+        ※ 카카오 공식 모델 카드 기준. MT-Bench는 10점 만점, 나머지는 정확도(%) 또는 0-shot CoT 점수.
+        1.5 버전은 이전 Nano 대비 수학(MATH +31점), 추론(GSM8K +9점) 영역에서 크게 향상됐다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 05 모델 파일 구성 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">05</div>
+      <h2 class="section-title">모델 파일 구성</h2>
+    </div>
+    <div class="section-body">
+      <p>
+        Hugging Face 저장소에 업로드된 주요 파일과 각 파일의 역할은 다음과 같다.
+        이 파일들은 모두 <code style="font-family:var(--mono);background:rgba(139,44,44,0.06);color:var(--accent);padding:2px 6px;border-radius:2px;font-size:13px;">AutoModelForCausalLM.from_pretrained()</code>
+        호출 시 자동으로 읽혀 모델을 복원한다.
+      </p>
+
+      <div class="file-list">
+        <div class="file-item">
+          <div class="fname">config.json</div>
+          <div class="fdesc">
+            모델 아키텍처 하이퍼파라미터 정의.
+            architectures, hidden_size, num_hidden_layers, num_attention_heads,
+            num_key_value_heads, max_position_embeddings, rope_theta, vocab_size 등.
+            추론 엔진(transformers, vLLM, SGLang)이 모델 구조를 인식하는 단일 진입점.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">model.safetensors</div>
+          <div class="fdesc">
+            모델 가중치(weights)를 안전한 텐서 포맷으로 저장한 파일.
+            BF16 기준 약 4.2GB. pickle 기반 .bin과 달리 임의 코드 실행 위험이 없어
+            보안 민감 환경(공공·금융)에서 권장되는 포맷.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">tokenizer.json</div>
+          <div class="fdesc">
+            BPE 토크나이저의 vocab과 merge 규칙, pre/post-tokenizer 정의.
+            <code style="font-family:var(--mono);color:var(--accent);">AutoTokenizer.from_pretrained()</code>가
+            이 파일만 있어도 동작하도록 만들어진 fast tokenizer 포맷.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">tokenizer_config.json</div>
+          <div class="fdesc">
+            토크나이저 메타데이터와 함께
+            <strong>chat_template</strong>(Jinja2)을 담는다.
+            <code style="font-family:var(--mono);color:var(--accent);">apply_chat_template()</code>이
+            system/user/assistant role을 모델 입력 포맷으로 변환할 때 참조하는 핵심 파일.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">special_tokens_map.json</div>
+          <div class="fdesc">
+            BOS, EOS, PAD, UNK 등 특수 토큰의 ID와 문자열 매핑.
+            대화 종료(EOS)·패딩 토큰 충돌 방지를 위한 명세.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">generation_config.json</div>
+          <div class="fdesc">
+            기본 생성 파라미터(temperature, top_p, top_k, repetition_penalty, max_new_tokens 등).
+            <code style="font-family:var(--mono);color:var(--accent);">model.generate()</code> 호출 시
+            인자를 지정하지 않으면 이 파일의 값이 사용된다.
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="fname">README.md (Model Card)</div>
+          <div class="fdesc">
+            모델 카드 본문. 용도·한계·벤치마크·라이선스·인용 정보 포함.
+            Hugging Face Hub 페이지에서 렌더링되는 표시면이자
+            도입 의사결정의 1차 근거 문서.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 06 활용 가능 업무 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">06</div>
+      <h2 class="section-title">활용 가능 업무</h2>
+    </div>
+    <div class="section-body">
+      <p>
+        2.1B 규모는 단독으로 ChatGPT급 추론을 대체하기 어렵지만,
+        <em class="kw">정형화된 소방 행정 업무 자동화</em>와 <em class="kw">소방 RAG 백엔드 보조 모델</em>로는 충분한 성능을 낸다.
+        다음은 경남소방본부에서 즉시 PoC 가능한 시나리오다.
+      </p>
+
+      <div class="usecase-grid">
+        <div class="usecase">
+          <div class="uc-num">USECASE / 01</div>
+          <h4>119 신고 텍스트 분류</h4>
+          <p>
+            STT로 변환된 119 신고 텍스트를 화재·구조·구급·기타로 자동 분류하고
+            긴급도(코드 적색·황색·녹색) 1차 판정 보조. 2.1B로도 분류 태스크는 충분히 견딘다.
+          </p>
+        </div>
+        <div class="usecase">
+          <div class="uc-num">USECASE / 02</div>
+          <h4>출동 보고서 초안 생성</h4>
+          <p>
+            현장 대원이 입력한 단편 메모와 무전 기록을 바탕으로
+            화재·구조·구급 출동 보고서 초안을 자동 작성.
+            대원은 사실관계 확인·수정만 담당해 행정 시간을 단축.
+          </p>
+        </div>
+        <div class="usecase">
+          <div class="uc-num">USECASE / 03</div>
+          <h4>소방법령·예방규정 RAG</h4>
+          <p>
+            소방기본법·화재예방법·위험물안전관리법·건축법 시행규칙을 임베딩 인덱싱한 뒤
+            Kanana를 생성기로 사용. 예방·검사·민원 담당자가 조항 단위로 질의응답.
+            온프레미스 배포로 외부 유출 위험 차단.
+          </p>
+        </div>
+        <div class="usecase">
+          <div class="uc-num">USECASE / 04</div>
+          <h4>화재 조사 보고서 요약</h4>
+          <p>
+            장문(수십~수백 페이지)의 화재 조사·감식 보고서를 32K 컨텍스트에 통째로 입력해
+            발화 원인·연소 확산·인명피해·재발 방지 권고를 요약 추출.
+            128K YaRN 적용 시 연도별 통합 보고서 분량까지 처리 가능.
+          </p>
+        </div>
+        <div class="usecase">
+          <div class="uc-num">USECASE / 05</div>
+          <h4>안전 점검 체크리스트 자동화</h4>
+          <p>
+            다중이용업소·위험물 시설 현장 점검표를 텍스트로 입력하면
+            지적사항을 항목별로 정리하고 행정처분 절차 초안을 생성.
+            반복 작성 업무 시간을 줄여 현장 점검 빈도 확보.
+          </p>
+        </div>
+        <div class="usecase">
+          <div class="uc-num">USECASE / 06</div>
+          <h4>외국인 신고·민원 1차 대응</h4>
+          <p>
+            영문 신고·민원 텍스트를 한국어로 1차 번역해 상황실에 전달,
+            한국어 응대 초안을 영문으로 변환해 회신 보조.
+            전문 통역의 대체는 아니나 골든타임 확보용 시안으로 유용.
+          </p>
+        </div>
+      </div>
+
+      <div class="pullquote">
+        Kanana-1.5-2.1B는 '완성형 AI 비서'가 아니라
+        '한국어 소방 도메인 위에 얹는 가벼운 추론 엔진'이다.
+        RAG·룰 기반 검증·현장 대원 휴먼인더루프와 결합할 때 비로소 가치가 살아난다.
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 07 한계와 주의사항 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">07</div>
+      <h2 class="section-title">한계와 주의사항</h2>
+    </div>
+    <div class="section-body">
+      <ul class="limit-list">
+        <li>
+          <strong>규모 한계.</strong>
+          2.1B 파라미터는 복잡한 다단계 추론·전문 법률 해석에서 7B~70B 모델 대비 명백히 약하다.
+          단독으로 정책 결정을 대신할 수 있는 수준은 아니다.
+        </li>
+        <li>
+          <strong>환각(Hallucination).</strong>
+          존재하지 않는 법조문·통계·인명을 그럴듯하게 만들어낼 수 있다.
+          행정 문서에 출력을 그대로 사용하지 말고
+          <em class="kw">RAG·검증 룰·담당자 리뷰</em>를 반드시 결합해야 한다.
+        </li>
+        <li>
+          <strong>한국어 도메인 깊이.</strong>
+          일반 한국어는 우수하나, 화재 조사·위험물·구급 의료·소방시설 같은
+          소방 전문 도메인 용어는 LoRA·QLoRA 기반 추가 파인튜닝이 권장된다.
+        </li>
+        <li>
+          <strong>학습 데이터 투명성.</strong>
+          공개된 사전학습 데이터 출처 목록이 제한적이라
+          저작권·개인정보 유래에 대한 자체 위험 평가가 필요하다.
+          (단, 카카오 사용자 데이터 미포함은 명시됨)
+        </li>
+        <li>
+          <strong>평가 데이터 한계.</strong>
+          KMMLU, KoMT-Bench 같은 공개 벤치마크 성능이 곧 '현장 행정 업무 성능'은 아니다.
+          반드시 자체 평가셋으로 별도 검증해야 한다.
+        </li>
+        <li>
+          <strong>장문 컨텍스트 비용.</strong>
+          128K YaRN 사용 시 KV-Cache 메모리가 급증한다.
+          평균 입력 길이를 측정해 32K 네이티브로 충분한지 먼저 검토할 것.
+        </li>
+        <li>
+          <strong>상업 활용.</strong>
+          Apache 2.0이라 상업·공공 활용 모두 가능하지만,
+          파생 모델 배포 시 NOTICE·LICENSE 파일 동봉 의무를 준수해야 한다.
+        </li>
+        <li>
+          <strong>보안.</strong>
+          외부 API가 아닌 온프레미스 배포가 가능한 것이 강점이나,
+          모델 가중치 자체의 무결성 검증(safetensors 해시 확인)과
+          프롬프트 인젝션 대응 가드레일을 별도로 구축해야 한다.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== 08 종합 의견 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">08</div>
+      <h2 class="section-title">종합 의견</h2>
+    </div>
+    <div class="section-body">
+      <p>
+        Kanana-1.5-2.1B-Instruct-2505는 <strong>"한국어로 동작하는 가장 가벼운, 그러나 진지하게 쓸 만한 SLM"</strong>이라는 좌표 위에 있다.
+        경남소방본부의 입장에서 이 모델은
+        '단독으로 도입할 모델'이 아니라
+        <em class="kw">기존 119 신고 접수·출동·예방 업무 파이프라인 안에 끼워 넣어 행정 부담을 낮추는 보조 엔진</em>으로 검토하는 것이 합리적이다.
+      </p>
+
+      <p>
+        <strong>도입이 적합한 조건은 다음과 같다.</strong>
+      </p>
+      <ul class="limit-list">
+        <li><strong>온프레미스 강제.</strong> 119 신고 내용·환자 정보·현장 무전이 포함되어 외부 API 호출이 금지된 환경.</li>
+        <li><strong>한국어 비중 95% 이상.</strong> 영어 의존도가 낮은 소방 현장 텍스트에 최적.</li>
+        <li><strong>RAG·룰 기반 검증과 결합 가능.</strong> 모델 단독 출력에 의존하지 않는 아키텍처 (소방법령 인덱싱 필수).</li>
+        <li><strong>분류·요약·초안 작성 중심.</strong> 화재 원인 판정·인명피해 추정 같은 책임 추론은 상위 모델·전문가에 위임.</li>
+      </ul>
+
+      <p style="margin-top:20px;">
+        <strong>도입 전 필수 PoC 항목:</strong>
+        ① 자체 소방 한국어 평가셋 구축(119 신고 100건·출동 보고서 100건·예방 민원 100건)으로 KoMT-Bench 외 실측 성능 검증,
+        ② 소방 도메인 LoRA 파인튜닝 효과 측정(베이스 vs LoRA 적용 후 분류·요약 정확도 차이),
+        ③ 32K 입력 시 추론 지연·메모리 측정(소방서 단위 서버 사양 검증),
+        ④ 프롬프트 인젝션·개인정보(환자명·주소·주민번호) 노출 위험 레드팀 테스트,
+        ⑤ 감사·법무 부서와 Apache 2.0 라이선스 적용 범위 사전 협의,
+        ⑥ 119 신고 데이터의 학습·로그 보관 정책에 대한 정보공개·개인정보보호위원회 사전 검토.
+      </p>
+
+      <p>
+        결론적으로, 외산 폐쇄 API에 대한 정책적·예산적 의존도를 낮추면서
+        소방 행정 디지털 전환을 시작하려는 광역소방본부라면
+        Kanana-1.5-2.1B는 <em class="kw">국산 SLM PoC의 출발선</em>으로 가장 합리적인 선택지 중 하나다.
+        다만 '한국에서 만든 모델'이라는 점이 곧 '소방 도메인에 최적화된 모델'을 의미하지 않으므로,
+        도메인 검증과 LoRA 추가 학습은 협상의 여지 없이 필요한 단계로 간주해야 한다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 09 참고 링크 ===================== -->
+  <section class="report-section">
+    <div class="section-head">
+      <div class="section-number">09</div>
+      <h2 class="section-title">참고 링크</h2>
+    </div>
+    <div class="section-body">
+      <ul class="ref-list">
+        <li>
+          <span class="ref-num">[1]</span>
+          <span class="ref-title">Hugging Face 모델 페이지</span>
+          <a href="https://huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505" target="_blank">huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505</a>
+        </li>
+        <li>
+          <span class="ref-num">[2]</span>
+          <span class="ref-title">Kanana 1.5 컬렉션 (8B·2.1B·VL 포함)</span>
+          <a href="https://huggingface.co/collections/kakaocorp/kanana-15" target="_blank">huggingface.co/collections/kakaocorp/kanana-15</a>
+        </li>
+        <li>
+          <span class="ref-num">[3]</span>
+          <span class="ref-title">Kanana Technical Report (arXiv:2502.18934)</span>
+          <a href="https://arxiv.org/abs/2502.18934" target="_blank">arxiv.org/abs/2502.18934</a>
+        </li>
+        <li>
+          <span class="ref-num">[4]</span>
+          <span class="ref-title">Kanana 1.5 기술 블로그 (tech.kakao.com)</span>
+          <a href="https://tech.kakao.com/posts/707" target="_blank">tech.kakao.com/posts/707</a>
+        </li>
+        <li>
+          <span class="ref-num">[5]</span>
+          <span class="ref-title">Kanana GitHub Repository</span>
+          <a href="https://github.com/kakao/kanana" target="_blank">github.com/kakao/kanana</a>
+        </li>
+        <li>
+          <span class="ref-num">[6]</span>
+          <span class="ref-title">Kanana-Nano 사전학습 블로그 (개발 배경)</span>
+          <a href="https://tech.kakao.com/posts/682" target="_blank">tech.kakao.com/posts/682</a>
+        </li>
+        <li>
+          <span class="ref-num">[7]</span>
+          <span class="ref-title">YaRN: Efficient Context Window Extension (참조 논문)</span>
+          <a href="https://arxiv.org/abs/2309.00071" target="_blank">arxiv.org/abs/2309.00071</a>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="report-footer">
+    <div class="footer-mark">— 끝 —</div>
+    <div class="footer-meta">
+      경남소방본부 · 김경훈 · AI 전문인재 과정 Day 1 · SLM Research Report · 2026
+    </div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:0.06em;">
+      <a href="https://github.com/a01068781612-dot/slm-model-report-gnfire-kimkh" target="_blank" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--line);">
+        github.com/a01068781612-dot/slm-model-report-gnfire-kimkh
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

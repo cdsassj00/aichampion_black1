@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F1F5F9;
+      --paper: #FFFFFF;
+      --surface: #F8FAFC;
+      --surface-2: #F1F5F9;
+      --border: #E2E8F0;
+      --border-light: #F1F5F9;
+      --ink: #0F172A;
+      --ink-soft: #334155;
+      --ink-mute: #64748B;
+      --ink-faint: #94A3B8;
+      --accent: #2563EB;
+      --accent-deep: #1E40AF;
+      --accent-soft: #EFF6FF;
+      --accent-border: #BFDBFE;
+      --accent-2: #0EA5E9;
+      --highlight: #F59E0B;
+      --code-bg: #F1F5F9;
+      --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 12px rgba(15, 23, 42, .06);
+      --shadow-md: 0 2px 4px rgba(15, 23, 42, .06), 0 12px 32px rgba(15, 23, 42, .08);
+      --sans: 'Pretendard Variable', 'Pretendard', 'Inter', 'Noto Sans KR', sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact
+    }
+
+    html,
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 13pt;
+      line-height: 1.85;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: .9em;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-deep);
+      font-weight: 500
+    }
+
+    /* ========== TOOLBAR ========== */
+    .tb {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      z-index: 200;
+      background: rgba(241, 245, 249, .88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 22px;
+    }
+
+    .tb-brand {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -.2px;
+      color: var(--ink)
+    }
+
+    .tb-brand .sub {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 1.8pt;
+      text-transform: uppercase;
+      color: var(--ink-mute)
+    }
+
+    .tb-spacer {
+      flex: 1
+    }
+
+    .tb button {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      font: 600 12.5px var(--sans);
+      letter-spacing: -.1px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      color: var(--ink-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+
+    .tb button:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-deep)
+    }
+
+    .tb .tb-edit.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff
+    }
+
+    .tb .tb-edit.active:hover {
+      background: var(--accent-deep);
+      border-color: var(--accent-deep)
+    }
+
+    .tb .tb-save {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff
+    }
+
+    .tb .tb-save:hover {
+      background: var(--accent-deep);
+      border-color: var(--accent-deep);
+      color: #fff
+    }
+
+    .tb .tb-print {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff
+    }
+
+    .tb .tb-print:hover {
+      background: #000;
+      border-color: #000;
+      color: #fff
+    }
+
+    /* ========== PAGE STACK ========== */
+    .stack {
+      padding: 80px 0 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--paper);
+      color: var(--ink);
+      padding: 22mm 22mm 24mm;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ========== COVER ========== */
+    .cv {
+      padding: 0;
+      background: var(--ink);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: none
+    }
+
+    .cv::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4mm;
+      background: var(--accent);
+      z-index: 3
+    }
+
+    .cv-content {
+      flex: 1;
+      padding: 26mm 22mm 14mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between
+    }
+
+    .cv-top .cv-org {
+      font-family: var(--mono);
+      font-size: 8.5pt;
+      letter-spacing: 2.8pt;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      line-height: 2;
+    }
+
+    .cv-top .cv-org strong {
+      display: block;
+      color: var(--accent-2);
+      font-weight: 700;
+      font-size: 9pt;
+      margin-bottom: 3mm
+    }
+
+    .cv-center .cv-year {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 18pt;
+      color: var(--accent-2);
+      margin-bottom: 5mm;
+      letter-spacing: -.3pt;
+    }
+
+    .cv-center .cv-title {
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 38pt;
+      color: #fff;
+      line-height: 1.15;
+      letter-spacing: -1.6pt;
+      margin: 0 0 6mm;
+    }
+
+    .cv-center .cv-rule {
+      width: 48mm;
+      height: 1.2mm;
+      background: var(--accent);
+      margin: 6mm 0
+    }
+
+    .cv-center .cv-doctype {
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 18pt;
+      color: #CBD5E1;
+      margin-bottom: 4mm;
+      letter-spacing: -.3pt;
+    }
+
+    .cv-center .cv-sub {
+      font-family: var(--sans);
+      font-weight: 400;
+      font-size: 11.5pt;
+      color: #CBD5E1;
+      line-height: 1.7;
+      max-width: 135mm;
+    }
+
+    .cv-bottom .cv-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+      padding-top: 7mm;
+      gap: 8mm;
+    }
+
+    .cv-meta .m-l {
+      font: 700 7.5pt/1 var(--mono);
+      letter-spacing: 2.2pt;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 3mm
+    }
+
+    .cv-meta .m-v {
+      font-family: var(--sans);
+      font-size: 11.5pt;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -.2pt
+    }
+
+    .cv-foot {
+      background: #fff;
+      color: var(--ink);
+      padding: 10mm 22mm 12mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+
+    .cv-foot::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: .6mm;
+      background: var(--accent)
+    }
+
+    .cv-foot-l {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 13pt;
+      color: var(--ink);
+      letter-spacing: -.2pt
+    }
+
+    .cv-foot-l .sub {
+      display: block;
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: var(--ink-mute);
+      letter-spacing: 1.5pt;
+      text-transform: uppercase;
+      margin-top: 2mm;
+      font-family: var(--mono)
+    }
+
+    .cv-foot-r {
+      text-align: right;
+      font: 600 7.5pt/1.7 var(--mono);
+      letter-spacing: 1.6pt;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      max-width: 80mm;
+    }
+
+    /* ========== STUDENT INFO BLOCK ========== */
+    .id-block {
+      background: linear-gradient(135deg, var(--accent-soft) 0%, var(--paper) 100%);
+      border: 1px solid var(--accent-border);
+      border-radius: 5px;
+      padding: 7mm 8mm;
+      margin: 0 0 9mm;
+    }
+
+    .id-block .lbl {
+      font: 700 8pt/1 var(--mono);
+      letter-spacing: 2.2pt;
+      text-transform: uppercase;
+      color: var(--accent-deep);
+      margin-bottom: 5mm;
+      display: flex;
+      align-items: center;
+      gap: 2mm;
+    }
+
+    .id-block .lbl::before {
+      content: "●";
+      font-size: 7pt;
+      color: var(--accent)
+    }
+
+    .id-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm 8mm
+    }
+
+    .id-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2mm
+    }
+
+    .id-cell .k {
+      font: 700 7.5pt/1 var(--mono);
+      letter-spacing: 1.5pt;
+      color: var(--ink-mute);
+      text-transform: uppercase
+    }
+
+    .id-cell .v {
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 14pt;
+      color: var(--ink);
+      border-bottom: 1px solid var(--accent-border);
+      padding: 2mm 0 2.5mm;
+      letter-spacing: -.3pt;
+      min-height: 10mm;
+      line-height: 1.5;
+    }
+
+    .id-cell .v[contenteditable=true]:empty::before {
+      content: attr(data-ph);
+      color: var(--ink-faint);
+      font-style: normal;
+      font-weight: 400;
+    }
+
+    /* ========== SECTION ========== */
+    .sec {
+      margin: 9mm 0 6mm;
+      page-break-inside: avoid
+    }
+
+    .sec h2 {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 14pt;
+      color: var(--ink);
+      letter-spacing: -.3px;
+      padding: 0 0 3mm;
+      margin-bottom: 4mm;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 5mm;
+    }
+
+    .sec h2::before {
+      content: "";
+      display: inline-block;
+      width: 3.5pt;
+      height: 18pt;
+      background: var(--accent);
+      border-radius: 2pt;
+    }
+
+    .sec h2 .num {
+      font: 700 8.5pt/1 var(--mono);
+      letter-spacing: 2pt;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 3pt 8pt;
+      border-radius: 4pt;
+      min-width: 10mm;
+      text-align: center;
+    }
+
+    /* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+    .sec p,
+    .sec .body {
+      font-size: 12pt;
+      line-height: 1.95;
+      color: var(--ink);
+      font-weight: 400;
+      letter-spacing: -.05pt;
+      margin: 3mm 0;
+      text-align: left;
+      min-height: 18mm;
+      padding: 5mm 6mm;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 5px 5px 0;
+    }
+
+    .sec .body[contenteditable=true]:empty::before,
+    .sec p[contenteditable=true]:empty::before {
+      content: attr(data-ph);
+      color: var(--ink-faint);
+      font-weight: 400;
+    }
+
+    /* ========== TABLES ========== */
+    .kv-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4mm 0 5mm;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .kv-table tr {
+      border-bottom: 1px solid var(--border-light)
+    }
+
+    .kv-table tr:last-child {
+      border-bottom: none
+    }
+
+    .kv-table td {
+      padding: 4mm 6mm;
+      font-size: 11.5pt;
+      line-height: 1.75;
+      vertical-align: top
+    }
+
+    .kv-table td.k {
+      font-family: var(--sans);
+      font-weight: 700;
+      color: var(--ink);
+      width: 48mm;
+      background: var(--surface);
+      letter-spacing: -.1pt;
+      font-size: 11pt;
+      border-right: 1px solid var(--border);
+    }
+
+    .kv-table td.v {
+      color: var(--ink);
+      min-height: 8mm;
+      font-weight: 400
+    }
+
+    .kv-table td.v[contenteditable=true]:empty::before {
+      content: attr(data-ph);
+      color: var(--ink-faint);
+      font-weight: 400;
+    }
+
+    /* ========== CALLOUT ========== */
+    .callout {
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      border-left: 4px solid var(--accent);
+      padding: 6mm 8mm;
+      margin: 6mm 0;
+      page-break-inside: avoid;
+      border-radius: 5px;
+    }
+
+    .callout .label {
+      font: 700 8pt/1 var(--mono);
+      letter-spacing: 2pt;
+      text-transform: uppercase;
+      color: var(--accent-deep);
+      margin-bottom: 3.5mm;
+      display: flex;
+      align-items: center;
+      gap: 2mm;
+    }
+
+    .callout .label::before {
+      content: "●";
+      font-size: 7pt;
+      color: var(--accent)
+    }
+
+    .callout p {
+      margin: 1.5mm 0;
+      font-size: 11pt;
+      color: var(--ink);
+      line-height: 1.75;
+      text-align: left
+    }
+
+    /* ========== LINK LIST ========== */
+    .link-list {
+      margin: 4mm 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2mm
+    }
+
+    .link-list li {
+      position: relative;
+      padding: 2mm 0 2mm 8mm;
+      font-size: 11pt;
+      line-height: 1.75;
+      color: var(--ink-soft);
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .link-list li:last-child {
+      border-bottom: none
+    }
+
+    .link-list li::before {
+      content: "";
+      position: absolute;
+      left: 1.5mm;
+      top: 4.5mm;
+      width: 8pt;
+      height: 8pt;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ========== EDIT MODE ========== */
+    [contenteditable=true] {
+      outline: 1px dashed var(--accent-border);
+      outline-offset: 2px;
+      background: var(--accent-soft) !important;
+      border-radius: 3px;
+      cursor: text;
+      caret-color: var(--accent);
+    }
+
+    [contenteditable=true]:focus {
+      outline: 2px solid var(--accent);
+      background: #fff !important;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    body:not(.edit-mode) [contenteditable=true] {
+      outline: none;
+      background: transparent !important;
+      box-shadow: none;
+    }
+
+    body:not(.edit-mode) .sec p[contenteditable=true],
+    body:not(.edit-mode) .sec .body[contenteditable=true] {
+      background: var(--surface) !important;
+    }
+
+    body.edit-mode::after {
+      content: "편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: #fff;
+      padding: 11px 22px;
+      border-radius: 24px;
+      font: 700 10.5px var(--sans);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, .4);
+      z-index: 300;
+      pointer-events: none;
+      border: 1px solid var(--accent);
+    }
+
+    /* ========== PRINT ========== */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 14mm 14mm 16mm 14mm
+      }
+
+      @page :first {
+        margin: 0
+      }
+
+      html,
+      body {
+        background: #fff !important
+      }
+
+      .tb {
+        display: none !important
+      }
+
+      .stack {
+        padding: 0;
+        gap: 0
+      }
+
+      .sheet {
+        width: auto;
+        min-height: auto;
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0;
+        padding: 0 0 6mm;
+        page-break-after: always;
+        border-radius: 0;
+      }
+
+      .sheet:last-child {
+        page-break-after: auto
+      }
+
+      .cv {
+        margin: 0;
+        padding: 0;
+        min-height: 297mm;
+        page-break-after: always
+      }
+
+      .sheet:not(.cv) {
+        padding: 18mm 18mm 18mm
+      }
+
+      [contenteditable=true] {
+        outline: none !important;
+        box-shadow: none !important
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ============================================================ -->
+  <!-- TOOLBAR -->
+  <!-- ============================================================ -->
+  <div class="tb">
+    <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+    <div class="tb-spacer"></div>
+    <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+    <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+    <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+  </div>
+
+  <div class="stack">
+
+    <!-- ============================================================ -->
+    <!-- COVER PAGE -->
+    <!-- ============================================================ -->
+    <section class="sheet cv">
+      <div class="cv-content">
+        <div class="cv-top">
+          <div class="cv-org">
+            <strong>AI 전문인재 과정 · 2026</strong>
+            Public AI Expert Program · Hugging Face SLM Research Report
+          </div>
+        </div>
+
+        <div class="cv-center">
+          <div class="cv-year">Day 1 · Assignment 01</div>
+          <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+          <div class="cv-rule"></div>
+          <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+          <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한
+            1인 1리포트입니다.</div>
+        </div>
+
+        <div class="cv-bottom">
+          <div class="cv-meta">
+            <div class="m">
+              <div class="m-l">Track</div>
+              <div class="m-v">SLM Research</div>
+            </div>
+            <div class="m">
+              <div class="m-l">Format</div>
+              <div class="m-v">HTML Report</div>
+            </div>
+            <div class="m">
+              <div class="m-l">Submission</div>
+              <div class="m-v">GitHub Public Repo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cv-foot">
+        <div class="cv-foot-l">
+          AI 전문인재 과정
+          <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+        </div>
+        <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- BODY PAGE -->
+    <!-- ============================================================ -->
+    <section class="sheet">
+
+      <!-- ========== STUDENT IDENTITY ========== -->
+      <div class="id-block">
+        <div class="lbl">Student Identity · 수강생 정보</div>
+        <div class="id-grid">
+          <div class="id-cell">
+            <span class="k">수강생 소속</span>
+            <span class="v" contenteditable="true" data-ph="예: 행정안전부">서울시_금천구</span>
+          </div>
+          <div class="id-cell">
+            <span class="k">수강생 이름</span>
+            <span class="v" contenteditable="true" data-ph="예: 홍길동">권동근</span>
+          </div>
+          <div class="id-cell">
+            <span class="k">선택 모델명</span>
+            <span class="v" contenteditable="true" data-ph="예: Qwen2.5-3B-Instruct"><span style="font-size: 18.6667px;">kanana-1.5-2.1b-instruct-2505</span></span>
+          </div>
+          <div class="id-cell">
+            <span class="k">Hugging Face 모델 링크</span>
+            <span class="v" contenteditable="true" data-ph="https://huggingface.co/..."><span style="font-size: 18.6667px;">https://huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 1 ========== -->
+      <div class="sec">
+        <h2><span class="num">01</span>모델 선택 이유</h2>
+        <div class="body" contenteditable="true" data-ph="이 모델을 선택한 이유를 작성합니다. 특정 산업, 공공 업무, 행정, 문서처리, 질의응답 등 어떤 관점에서 적합하다고 판단했는지 설명합니다.">
+          <p style="margin-bottom: 10px;">1B~7B 범위 SLM 후보군을 라이선스·한국어 성능·보안성·시스템 호환성 네 가지 기준으로 평가한 결과, Kanana 1.5 2.1B
+            Instruct가 모든 항목에서 합격선 이상의 균형을 충족하는 후보로 선정되었다.</p>
+          <table class="kv-table" style="font-size: 11pt; table-layout: fixed; width: 100%;">
+            <thead>
+              <tr>
+                <td class="k" style="width: 20%;">검토 항목</td>
+                <td class="k" style="width: 65%; border-right: 1px solid var(--border);">평가 내용</td>
+                <td class="k" style="width: 15%; text-align: center;">결과</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="v" style="font-weight: 700; background: var(--surface); border-right: 1px solid var(--border);">라이선스</td>
+                <td class="v" style="border-right: 1px solid var(--border);">Apache 2.0 — 내부망 활용·수정·파인튜닝·재배포 시 별도 계약 불필요</td>
+                <td class="v" style="color: #166534; font-weight: 700; text-align: center;">적합</td>
+              </tr>
+              <tr>
+                <td class="v" style="font-weight: 700; background: var(--surface); border-right: 1px solid var(--border);">한국어 성능</td>
+                <td class="v" style="border-right: 1px solid var(--border);">카카오 자체 한국어 코퍼스 기반. KOBEST·HAE-RAE 동급 파라미터 상위권. 행안부 AI 국민비서 시범서비스 공공 레퍼런스 존재</td>
+                <td class="v" style="color: #166534; font-weight: 700; text-align: center;">적합</td>
+              </tr>
+              <tr>
+                <td class="v" style="font-weight: 700; background: var(--surface); border-right: 1px solid var(--border);">보안성</td>
+                <td class="v" style="border-right: 1px solid var(--border);">가중치 1회 다운로드 후 완전 오프라인 구동. 주요 추론 엔진(vLLM·llama.cpp) 텔레메트리 비활성화 지원</td>
+                <td class="v" style="color: #166534; font-weight: 700; text-align: center;">적합</td>
+              </tr>
+              <tr>
+                <td class="v" style="font-weight: 700; background: var(--surface); border-right: 1px solid var(--border);">시스템 호환성</td>
+                <td class="v" style="border-right: 1px solid var(--border);">4-bit 양자화 시 VRAM 약 1.5 GB. 보급형 GPU(RTX 4060·NVIDIA L4) 운용 가능. 함수 호출(Function Calling) 및
+                  RAG 파이프라인 연동 지원</td>
+                <td class="v" style="color: #166534; font-weight: 700; text-align: center;">적합</td>
+              </tr>
+              <tr>
+                <td class="v" style="font-weight: 700; background: var(--surface); border-right: 1px solid var(--border);">비교 탈락 후보</td>
+                <td class="v" style="border-right: 1px solid var(--border);">EXAONE 4.0 1.2B — 한국어 성능 우수하나 NC 라이선스(출력물 권리 귀속 조항)로 공문서 자동 생성 업무와 충돌 소지</td>
+                <td class="v" style="color: #92400e; font-weight: 700; text-align: center;">제외</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 2 ========== -->
+      <div class="sec">
+        <h2><span class="num">02</span>모델 기본 정보</h2>
+        <table class="kv-table">
+          <tbody>
+            <tr>
+              <td class="k">모델명</td>
+              <td class="v" contenteditable="true" data-ph="모델 카드 상단의 정식 명칭을 입력하세요."><span style="font-size: 15.3333px;">kanana-1.5-2.1b-instruct-2505</span></td>
+            </tr>
+            <tr>
+              <td class="k">개발 주체</td>
+              <td class="v" contenteditable="true" data-ph="개발 회사·기관·연구팀·개인 개발자 등"><span style="font-size: 15.3333px;">kakaocorp</span></td>
+            </tr>
+            <tr>
+              <td class="k">모델 규모</td>
+              <td class="v" contenteditable="true" data-ph="예: 1.5B / 3B / 7B">2.1B</td>
+            </tr>
+            <tr>
+              <td class="k">라이선스</td>
+              <td class="v" contenteditable="true" data-ph="예: Apache-2.0 / MIT / Llama 3 Community / 기타"><span style="border: 0px solid oklch(0.928 0.006 264.531); color: oklch(0.373 0.034 259.733); font-family: &quot;Source Sans Pro&quot;, ui-sans-serif, system-ui, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;; font-size: 14px; text-align: center; white-space: nowrap;">apache-2.0<br></span></td>
+            </tr>
+            <tr>
+              <td class="k">모델 유형</td>
+              <td class="v" contenteditable="true" data-ph="Base / Instruct / Chat / Domain-specific 등">instruct</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ========== SECTION 3 ========== -->
+      <div class="sec">
+        <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+        <div class="body" contenteditable="true" data-ph="모델이 어떤 데이터로 사전학습되었는지, 공개 데이터인지, 특정 산업·언어·도메인 데이터가 포함되었는지, Instruction Tuning · SFT · RLHF · DPO · LoRA · QLoRA 등 어떤 튜닝이 적용되었는지 정리합니다. 모델 카드에 명확히 공개되어 있지 않다면 '공개 범위 내에서는 확인 어려움'이라고 작성합니다.">
+          <strong style="color: var(--accent-deep); display: block; margin: 5px 0 5px;">사전학습 데이터 (Pre-training Data)</strong>
+          <ul style="padding-left: 20px; margin-bottom: 15px; font-size: 11pt;">
+            <li>총 3조(3T) 토큰. 출처는 모두 공개 데이터이며 카카오 자체 서비스 데이터는 미포함.</li>
+            <li>구성 카테고리: English Web, Korean Web, Academic, Code, Encyclopedia, Instruction Data</li>
+            <li>Stage 1 (2.7T): English Web 67.8% 중심 / Stage 2 (300B): Academic·Code 중심, Korean Web·Instruction 포함</li>
+            <li>데이터 품질 관리: deduplication → heuristic filtering → PII anonymization → 언어별 모델 기반 필터링(영어: DCLM classifier, 한국어: 자체 edu filter/FastText 기반)</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">포스트학습 데이터 (Post-training Data)</strong>
+          <ul style="padding-left: 20px; margin-bottom: 15px; font-size: 11pt;">
+            <li>SFT: 총 120만 인스턴스 (Code 41.1%, Math 21.7%, Instruction Following 19.2%, General Chat 10.0%, Safety 8.0%)</li>
+            <li>Preference: 총 40.7만 인스턴스 (Instruction Following 32.9%, Code 31.7%, General Chat 23.3%, Math 12.0%)</li>
+            <li>데이터 출처: 공개 데이터셋 + 인간 기여자(human contributors) 혼합</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">튜닝 방식</strong>
+          <ul style="padding-left: 20px; margin-bottom: 10px; font-size: 11pt;">
+            <li><b>Pre-training:</b> Staged Pre-training (2단계), Depth Up-scaling (DUS), Pruning &amp; Distillation</li>
+            <li><b>Post-training:</b> SFT (Supervised Fine-Tuning)</li>
+            <li><b>Preference Optimization:</b> Offline DPO → Online DPO (비동기 응답 샘플링, 고정 reference 모델 유지)</li>
+            <li><b>Reward Model:</b> Bradley-Terry 모델 기반, Best-of-N 정책으로 선정</li>
+            <li><b>특화 적용:</b> Embedding: LLM2Vec / RAG: SFT+DPO+모델 병합 / Function Calling: 도메인 사전학습+SFT</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 4 ========== -->
+      <div class="sec">
+        <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+        <table class="kv-table">
+          <tbody>
+            <tr>
+              <td class="k">Architecture</td>
+              <td class="v" contenteditable="true" data-ph="예: Llama / Qwen2 / Mistral / Phi 등"><span style="font-size: 15.3333px;">LlamaForCausalLM</span></td>
+            </tr>
+            <tr>
+              <td class="k">Context Length</td>
+              <td class="v" contenteditable="true" data-ph="예: 4096 / 8192 / 32768 / 128000 토큰"><span style="font-size: 15.3333px;">32,768 토큰 (max_position_embeddings 값)</span></td>
+            </tr>
+            <tr>
+              <td class="k">Hidden Size</td>
+              <td class="v" contenteditable="true" data-ph="config.json의 hidden_size 값"><span style="font-size: 15.3333px;">1792</span></td>
+            </tr>
+            <tr>
+              <td class="k">Layers</td>
+              <td class="v" contenteditable="true" data-ph="num_hidden_layers 값"><span style="font-size: 15.3333px;">32</span></td>
+            </tr>
+            <tr>
+              <td class="k">Attention Heads</td>
+              <td class="v" contenteditable="true" data-ph="num_attention_heads · num_key_value_heads"><span style="font-size: 15.3333px;">24 (num_attention_heads 값)/ 8 (num_key_value_heads 값)</span></td>
+            </tr>
+            <tr>
+              <td class="k">Tokenizer</td>
+              <td class="v" contenteditable="true" data-ph="BPE / SentencePiece / Tiktoken 등 + vocab size"><span style="font-size: 15.3333px;">BPE 기반 (vocab_size는 128,259)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ========== SECTION 5 ========== -->
+      <div class="sec">
+        <h2><span class="num">05</span>모델 파일 구성</h2>
+        <div class="body" contenteditable="true" data-ph="Hugging Face 저장소에 있는 config.json · tokenizer.json · model.safetensors · generation_config.json · special_tokens_map.json 등 주요 파일이 어떤 역할을 하는지 정리합니다.">
+          <ul style="padding-left: 20px; margin-bottom: 10px; font-size: 11pt;">
+            <li><b>LICENSE:</b> 모델의 라이선스 정보(Apache 2.0)를 담고 있으며, 사용 권한 및 제약 사항을 명시하는 파일입니다.</li>
+            <li><b>README.md:</b> 모델에 대한 전반적인 설명, 아키텍처, 성능 벤치마크 지표, 사용 방법 등을 설명하는 안내 문서 파일입니다.</li>
+            <li><b>config.json:</b> 모델의 아키텍처 구조와 하이퍼파라미터(예: 레이어 수, 히든 사이즈 등)를 정의하는 핵심 설정 파일입니다.</li>
+            <li><b>generation_config.json:</b> 모델이 텍스트를 생성할 때 기본적으로 사용되는 설정(예: 최대 토큰 수, Temperature 등)을 담고 있는 파일입니다.</li>
+            <li><b>gitattributes:</b> Git 대용량 파일 저장소(LFS) 처리 방식 등 Git 저장소의 파일 속성을 지정하는 파일입니다.</li>
+            <li><b>special_tokens_map.json:</b> 문장의 시작, 끝, 패딩 등을 나타내는 특수 토큰(Special Tokens)들의 매핑 정보를 담고 있는 파일입니다.</li>
+            <li><b>tokenizer.json:</b> 모델이 텍스트를 이해할 수 있도록 단어를 쪼개는 토크나이저의 전체 어휘 사전(Vocabulary)과 병합 규칙을 담고 있는 파일입니다.</li>
+            <li><b>tokenizer_config.json:</b> 토크나이저를 초기화하고 구동하는 데 필요한 상세 설정값들을 담고 있는 파일입니다.</li>
+            <li><b>모델.safetensors:</b> 모델의 실제 신경망 가중치가 담긴 핵심 파일</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 6 ========== -->
+      <div class="sec">
+        <h2><span class="num">06</span>활용 가능 업무</h2>
+        <div class="body" contenteditable="true" data-ph="공공기관 행정·민원 응대·내부 문서 분석·질의응답·요약·RAG 검색·챗봇·보고서 초안 작성 등 어떤 업무에 어떻게 활용 가능한지 구체 시나리오로 작성합니다.">
+          <div class="callout" style="margin-top: 0;">
+            <div class="label">운용 원칙</div>
+            <p>본 모델은 실무자 검토 전 '1차 자동 처리' 역할에 한정하며, 법적 효력을 갖는 최종 판단은 실무자가 수행한다.</p>
+          </div>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">① 행정 문서·보고서·회의록 자동 요약</strong>
+          <ul style="padding-left: 20px; margin-bottom: 10px; font-size: 11pt;">
+            <li>기본 32K 토큰(YaRN 적용 시 최대 128K) 입력 지원 — 1~2시간 회의록 단일 처리 가능</li>
+            <li>안건·결정 사항·후속 조치를 구조화 형태로 출력</li>
+            <li>회의 오디오 처리 시 별도 STT 도구(Whisper 등)와 파이프라인 연계 필요</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">② 문서 카테고리 자동 분류</strong>
+          <ul style="padding-left: 20px; margin-bottom: 10px; font-size: 11pt;">
+            <li>접수 민원 부서·담당자 자동 배정, 공문 유형 분류(시행·보고·통보·요청)</li>
+            <li>소형 모델이 가장 안정적으로 수행하는 영역 — LoRA 파인튜닝 적용 시 정확도 추가 향상</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">③ 공문서 양식 초안 자동 생성</strong>
+          <ul style="padding-left: 20px; margin-bottom: 10px; font-size: 11pt;">
+            <li>함수 호출(Function Calling) 기반 JSON 구조 출력 → 결재문서·시행문·보도자료 양식 자동 채우기</li>
+            <li>회의 요약 데이터 입력 → '제목-수신-발신-주요 내용-붙임' 형식 초안 생성</li>
+            <li>출력물에 <b>'AI 1차 작성 / 실무자 검토 필요'</b> 메타데이터 부착 의무화</li>
+          </ul>
+
+          <div class="callout" style="margin-bottom: 0;">
+            <div class="label">공통 파이프라인</div>
+            <p>세 가지 업무는 동일한 RAG 파이프라인으로 통합 운용 가능. 자치법규·행정해석·법령 고시를 벡터 DB에 구축하여 생성 근거를 실시간 보강.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 7 ========== -->
+      <div class="sec">
+        <h2><span class="num">07</span>한계와 주의사항</h2>
+        <div class="body" contenteditable="true" data-ph="성능 한계 · 환각 가능성 · 한국어 지원 수준 · 보안 이슈 · 라이선스 제한 · 상업적 활용 가능 여부 · 평가 데이터 한계 등을 정리합니다.">
+          <strong style="color: var(--accent-deep); display: block; margin: 5px 0 5px;">성능 한계 — 환각(Hallucination)
+            위험</strong>
+          <ul style="padding-left: 20px; margin-bottom: 15px; font-size: 11pt;">
+            <li>법령 조항 번호 오인용·수치 임의 추정·단정적 법률 진술 발생 가능</li>
+            <li><b>대응</b> : RAG로 외부 근거 강제 제공 + 근거 없는 답변 차단 시스템 프롬프트 적용 + 실무자 사후 검증 의무화</li>
+            <li>허가 여부 결정·행정처분 사유 작성 등 법적 판단 업무는 적용 범위에서 제외</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">보안 운영</strong>
+          <ul style="padding-left: 20px; margin-bottom: 15px; font-size: 11pt;">
+            <li>외부망 다운로드 → 악성코드 스캔·SHA256 해시 검증 → 행정망 반입 절차 필수</li>
+            <li>추론 로그 개인정보 마스킹 처리 후 보존 정책 수립</li>
+            <li>민원인 제출 텍스트 처리 시 프롬프트 인젝션 방지 입력 정제 로직 선행 적용</li>
+          </ul>
+
+          <strong style="color: var(--accent-deep); display: block; margin: 15px 0 5px;">생태계 변화 대응</strong>
+          <ul style="padding-left: 20px; margin-bottom: 5px; font-size: 11pt;">
+            <li>SLM은 6~12개월 단위로 동급 이상 모델 출시 중 — 모델 교체를 전제한 분리형 설계 필수</li>
+            <li>모델 가중치·RAG 벡터 DB·LoRA 어댑터·비즈니스 로직 계층을 분리하여 모델만 교체해도 축적 자산 재활용 가능하도록 구성</li>
+            <li>법령 개정 시 수시, 주요 고시 변경 시 즉시 RAG 벡터 DB 갱신 일정 운영 매뉴얼 명시</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 8 ========== -->
+      <div class="sec">
+        <h2><span class="num">08</span>종합 의견</h2>
+        <div class="body" contenteditable="true" data-ph="이 모델을 실제 조직 업무에 도입한다면 어떤 조건에서 적합한지, 어떤 추가 검증·POC가 필요한지 본인 의견을 작성합니다.">
+          <p style="margin-bottom: 15px; font-size: 11pt;">본 모델은 7B 이하 후보군 중 라이선스 안전성·한국어 성능·오프라인 구동·공공 레퍼런스·자원 효율성을 동시에
+            충족하는 가장 균형 있는 선택지로 판단된다. 단, 모델 단독 도입만으로 행정 업무 즉시 투입 수준의 정확도는 확보되지 않으며, 아래 체계가 병행 구축되어야 실효성이 확보된다.</p>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="flex: 1; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; text-align: center; font-size: 10.5pt; line-height: 1.5;">
+              <strong style="color: var(--accent); display: block; margin-bottom: 5px; font-size: 11pt;">PoC
+                &nbsp;1~2개월</strong>
+              자체 행정 문서<br>200~500건 기준<br>성능·환각 정량 평가
+            </div>
+            <div style="flex: 1; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; text-align: center; font-size: 10.5pt; line-height: 1.5;">
+              <strong style="color: var(--accent); display: block; margin-bottom: 5px; font-size: 11pt;">파일럿
+                &nbsp;3~6개월</strong>
+              단일 업무 한정 적용<br>(분류 또는 요약)<br>실무자 피드백 수집
+            </div>
+            <div style="flex: 1; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; text-align: center; font-size: 10.5pt; line-height: 1.5;">
+              <strong style="color: var(--accent); display: block; margin-bottom: 5px; font-size: 11pt;">확대 &nbsp;6개월
+                이후</strong>
+              안정성 검증 업무<br>순차 확대 적용<br>RAG·파인튜닝 갱신
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION 9 ========== -->
+      <div class="sec">
+        <h2><span class="num">09</span>참고 링크</h2>
+        <ul class="link-list" id="refList">
+          <li contenteditable="true" data-ph="Hugging Face 모델 페이지: https://huggingface.co/..."><span style="font-size: 14.6667px;">https://huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505</span></li>
+          <li contenteditable="true" data-ph="모델 논문 또는 기술 블로그: https://..."><span style="font-size: 14.6667px;">https://huggingface.co/kakaocorp/kanana-1.5-2.1b-instruct-2505/tree/main</span></li>
+          <li contenteditable="true" data-ph="GitHub 저장소: https://github.com/...">https://arxiv.org/pdf/2502.18934</li>
+        </ul>
+      </div>
+
+      <!-- ========== SUBMISSION ========== -->
+      <div class="callout">
+        <div class="label">Submission · 제출 정보</div>
+        <p><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong> <span contenteditable="true" data-ph="https://github.com/본인아이디/slm-model-report-소속-이름">&nbsp;https://github.com/kdk5534/slm-model-report-seoul_geumcheon-KwonDongGeun</span></p>
+        <p><strong style="color:var(--ink);font-weight:700">파일명 예시:</strong> 행안부_김민수_slm_report.html</p>
+        <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">최종 제출 시 EDIT 버튼을 눌러 모든 항목을 채운 뒤, [HTML 저장] 버튼으로
+          파일을 다운로드해 GitHub Repository에 업로드하세요. 또는 EDIT하지 않고 동일한 양식 그대로 생성형 AI(Claude·ChatGPT 등)에 첨부해 채움을 요청해도 무방합니다.</p>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCRIPT -->
+  <!-- ============================================================ -->
+  <script>
+    let editMode = false;
+
+    function toggleEdit() {
+      editMode = !editMode;
+      document.body.classList.toggle('edit-mode', editMode);
+      const btn = document.getElementById('btnEdit');
+      if (editMode) {
+        btn.classList.add('active');
+        btn.textContent = '✎ EDITING';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = '✎ EDIT';
+      }
+    }
+
+    // HTML 저장 — 현재 DOM 상태 그대로 다운로드
+    function saveHtml() {
+      const idCells = document.querySelectorAll('.id-cell .v');
+      const num = (idCells[0]?.textContent || '').trim() || 'XX';
+      const name = (idCells[1]?.textContent || '').trim() || '이름';
+      const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+      const wasEdit = editMode;
+      if (wasEdit) toggleEdit();
+
+      const doctype = '<!DOCTYPE html>\n';
+      const html = doctype + document.documentElement.outerHTML;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (wasEdit) toggleEdit();
+      showToast(`✓ ${fname} 다운로드 완료`);
+    }
+
+    function showToast(msg) {
+      let t = document.getElementById('__toast');
+      if (!t) {
+        t = document.createElement('div'); t.id = '__toast';
+        t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      requestAnimationFrame(() => t.style.opacity = '1');
+      clearTimeout(t._tid);
+      t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+    }
+
+    // 키보드 단축키
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault(); saveHtml();
+      } else if (e.key === 'Escape' && editMode) {
+        if (document.activeElement && document.activeElement.contentEditable === 'true') {
+          document.activeElement.blur();
+        } else {
+          toggleEdit();
+        }
+      } else if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey) {
+        if (!document.activeElement || document.activeElement === document.body) {
+          toggleEdit();
+        }
+      }
+    });
+  </script>
+
+
+
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+
+
+</body></html>
