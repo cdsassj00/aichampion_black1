@@ -10,7 +10,8 @@
     "html_path": "병무청_곽중호_slm_report.html",
     "local": "reports/cohort1/병무청_곽중호.html",
     "bytes": 28370,
-    "status": "ok"
+    "status": "ok",
+    "model": "DeepSeek-OCR-2"
   },
   {
     "cohort": "1",
@@ -23,7 +24,8 @@
     "html_path": "소상공인시장진흥공단_곽태혁_slm_report.html",
     "local": "reports/cohort1/소상공인시장진흥공단_곽태혁.html",
     "bytes": 27706,
-    "status": "ok"
+    "status": "ok",
+    "model": "kanana-1.5-2.1b-instruct"
   },
   {
     "cohort": "1",
@@ -36,7 +38,8 @@
     "html_path": "서울시_금천구_권동근_slm_report.html",
     "local": "reports/cohort1/서울시_금천구_권동근.html",
     "bytes": 45185,
-    "status": "ok"
+    "status": "ok",
+    "model": "kanana-1.5-2.1b-instruct"
   },
   {
     "cohort": "1",
@@ -49,7 +52,8 @@
     "html_path": "경남소방_김경훈_slm_report.html",
     "local": "reports/cohort1/경남소방_김경훈.html",
     "bytes": 40836,
-    "status": "ok"
+    "status": "ok",
+    "model": "Kanana-1.5-2.1B-Instruct"
   },
   {
     "cohort": "1",
@@ -62,7 +66,8 @@
     "html_path": "행정안전부_김명래_slm_report.html",
     "local": "reports/cohort1/행정안전부_김명래.html",
     "bytes": 29732,
-    "status": "ok"
+    "status": "ok",
+    "model": "EXAONE-3.5-2.4B-Instruct"
   },
   {
     "cohort": "1",
@@ -75,7 +80,8 @@
     "html_path": "한국환경공단_김윤성_slm_report.html",
     "local": "reports/cohort1/한국환경공단_김윤성.html",
     "bytes": 43664,
-    "status": "ok"
+    "status": "ok",
+    "model": "EXAONE-3.5-2.4B-Instruct"
   },
   {
     "cohort": "1",
@@ -88,7 +94,8 @@
     "html_path": "행안부_김희경_slm_report.html",
     "local": "reports/cohort1/행정안전부_김희경.html",
     "bytes": 26254,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-3B-Instruct"
   },
   {
     "cohort": "1",
@@ -101,7 +108,8 @@
     "html_path": "kac_kihyun_slm_report.html",
     "local": "reports/cohort1/한국공항공사_박기현.html",
     "bytes": 36836,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen1.5-1.8B-Chat"
   },
   {
     "cohort": "1",
@@ -114,7 +122,8 @@
     "html_path": "서울시소방_박선영_slm_report.html",
     "local": "reports/cohort1/서울소방_박선영.html",
     "bytes": 42817,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-7B-Instruct"
   },
   {
     "cohort": "1",
@@ -127,7 +136,8 @@
     "html_path": "한국토지주택공사_박효철_slm_report.html",
     "local": "reports/cohort1/한국토지주택공사_박효철.html",
     "bytes": 22202,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-7B-Instruct"
   },
   {
     "cohort": "1",
@@ -140,7 +150,8 @@
     "html_path": "경상북도 의성군_오현준_slm_report.html",
     "local": "reports/cohort1/경상북도_의성군_오현준.html",
     "bytes": 33176,
-    "status": "ok"
+    "status": "ok",
+    "model": "42dot-LLM-SFT-1.3B"
   },
   {
     "cohort": "1",
@@ -153,7 +164,8 @@
     "html_path": "경북경찰청_유도암_slm_report.html",
     "local": "reports/cohort1/경북경찰청_유도암.html",
     "bytes": 19816,
-    "status": "ok"
+    "status": "ok",
+    "model": "Mistral-7B-v0.3"
   },
   {
     "cohort": "1",
@@ -166,7 +178,8 @@
     "html_path": "국립수산과학원_윤석진_slm_report.html",
     "local": "reports/cohort1/국립수산과학원_윤석진.html",
     "bytes": 32764,
-    "status": "ok"
+    "status": "ok",
+    "model": "EXAONE-3.5-2.4B-Instruct"
   },
   {
     "cohort": "1",
@@ -179,7 +192,8 @@
     "html_path": "해양경찰청_이은주_slm_report.html",
     "local": "reports/cohort1/해양경찰청_이은주.html",
     "bytes": 30619,
-    "status": "ok"
+    "status": "ok",
+    "model": "gemma-4-E2B-it"
   },
   {
     "cohort": "1",
@@ -192,7 +206,8 @@
     "html_path": "인천시교육청_이호철_slm_report.html",
     "local": "reports/cohort1/인천시교육청_이호철.html",
     "bytes": 15159,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-3B-Instruct"
   },
   {
     "cohort": "1",
@@ -205,7 +220,8 @@
     "html_path": "한국청소년활동진흥원_장성주_slm_report.html",
     "local": "reports/cohort1/한국청소년활동진흥원_장성주.html",
     "bytes": 36158,
-    "status": "ok"
+    "status": "ok",
+    "model": "granite-4.0-h-tiny"
   },
   {
     "cohort": "1",
@@ -218,7 +234,8 @@
     "html_path": "질병관리청_정동석_slm_report.html",
     "local": "reports/cohort1/질병관리청_정동석.html",
     "bytes": 31487,
-    "status": "ok"
+    "status": "ok",
+    "model": "OpenAI Privacy Filter (1.5B / 50M active)"
   },
   {
     "cohort": "1",
@@ -231,7 +248,8 @@
     "html_path": "경상북도봉화군_조율_slm_report.html",
     "local": "reports/cohort1/경상북도_봉화군_조율.html",
     "bytes": 59587,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-1.5B-Instruct"
   },
   {
     "cohort": "1",
@@ -239,7 +257,8 @@
     "org": "행정안전부",
     "repo": "",
     "pages_url": "",
-    "status": "missing-url"
+    "status": "missing-url",
+    "model": ""
   },
   {
     "cohort": "1",
@@ -252,7 +271,8 @@
     "html_path": "행정안전부_이동주_slm_report.html",
     "local": "reports/cohort1/행정안전부_이동주.html",
     "bytes": 32060,
-    "status": "ok"
+    "status": "ok",
+    "model": "Gemma 4 E4B Instruct"
   },
   {
     "cohort": "1",
@@ -265,7 +285,8 @@
     "html_path": "소방청_한민훈_slm_report.html",
     "local": "reports/cohort1/한국방송통신전파진흥원_한민훈.html",
     "bytes": 31780,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen2.5-7B-Instruct"
   },
   {
     "cohort": "1",
@@ -278,7 +299,8 @@
     "html_path": "코레일유통_한재진_slm_report (Gemma4-E2B).html",
     "local": "reports/cohort1/코레일유통_한재진.html",
     "bytes": 39389,
-    "status": "ok"
+    "status": "ok",
+    "model": "gemma4-e2b"
   },
   {
     "cohort": "1",
@@ -291,7 +313,8 @@
     "html_path": "방사청_정연호_slm_report.html",
     "local": "reports/cohort1/방위사업청_정연호.html",
     "bytes": 25896,
-    "status": "ok"
+    "status": "ok",
+    "model": "Qwen3-4B-Instruct"
   },
   {
     "cohort": "1",
@@ -304,6 +327,7 @@
     "html_path": "인사혁신처_홍준표_slm_report.html",
     "local": "reports/cohort1/통일부_홍준표.html",
     "bytes": 133189,
-    "status": "ok"
+    "status": "ok",
+    "model": "qwen3-1.7B-ko-summary-finetuned-06-12"
   }
 ]
