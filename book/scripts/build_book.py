@@ -36,26 +36,12 @@ EMBED_STYLE = """<script id="book-embed-detect">
   if (window.self !== window.top) { document.documentElement.classList.add('book-embedded'); }
 </script>
 <style id="book-embed-overrides">
-  /* Applied only when this report is loaded inside the book viewer iframe. */
+  /* Applied only when this report is loaded inside the book viewer iframe.
+     Keep the original A4-ish design but hide the report's fixed toolbar
+     (parent viewer already provides navigation/controls). */
   html.book-embedded .tb { display: none !important; }
-  html.book-embedded body { background: #f8fafc !important; padding-top: 0 !important; }
-  html.book-embedded .stack { padding: 16px 12px 40px !important; gap: 16px !important; align-items: stretch !important; }
-  html.book-embedded .sheet {
-    width: auto !important;
-    max-width: 1100px !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    padding: 28px 32px !important;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.06) !important;
-  }
-  html.book-embedded .cv {
-    min-height: 0 !important;
-    padding: 36px 32px !important;
-  }
-  html.book-embedded .cv .cv-content { padding: 0 !important; }
-  @media (max-width: 720px) {
-    html.book-embedded .sheet { padding: 18px 16px !important; }
-  }
+  html.book-embedded body { padding-top: 0 !important; }
+  html.book-embedded .stack { padding: 24px 0 60px !important; }
 </style>"""
 
 
@@ -253,8 +239,9 @@ def main() -> int:
   }}
   ol.toc li a.active .model {{ color: #bfdbfe; background: rgba(191,219,254,0.2); }}
 
-  main {{ position: relative; background: #f1f5f9; }}
-  iframe {{ width: 100%; height: 100%; border: 0; background: white; }}
+  main {{ position: relative; background: #f1f5f9; overflow: hidden; height: 100%; }}
+  #viewer {{ width: 100%; height: 100%; }}
+  iframe {{ display: block; width: 100%; height: 100%; border: 0; background: white; }}
 
   .cover {{
     height: 100%; overflow-y: auto; padding: 72px 64px 96px;
