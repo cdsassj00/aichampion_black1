@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+/* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+.sec .body[contenteditable=true]:empty::before,
+.sec p[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+.kv-table td.v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+</head>
+<body id="artifacts-component-root-html">
+
+<!-- ============================================================ -->
+<!-- TOOLBAR -->
+<!-- ============================================================ -->
+<div class="tb">
+  <div class="tb-brand">EXAONE 3.5 2.4B 기술 분석 보고서<span class="sub">우정사업본부 · 송정욱</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+  <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+  <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+
+<div class="stack">
+
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>우정사업본부 · 2026</strong>
+        Korea Post · SLM On-Premise Deployment Technical Report
+      </div>
+    </div>
+
+    <div class="cv-center">
+      <div class="cv-year">기술 리포트 · 2026</div>
+      <h1 class="cv-title">EXAONE 3.5 2.4B<br>공공업무 자동화<br>모델 분석</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">온프레미스 SLM 도입 타당성 분석</div>
+      <div class="cv-sub">LG AI Research의 EXAONE-3.5-2.4B-Instruct-GGUF(Q6_K)를 대상으로 아키텍처 구조·학습 파이프라인·양자화 특성·한국어 추론 성능을 언어모델 전문가 관점에서 심층 분석하고, 폐쇄망 공공 환경에서의 실무 적용 가능성을 검토한 기술 보고서입니다.</div>
+    </div>
+
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Model</div><div class="m-v">EXAONE 3.5 2.4B</div></div>
+        <div class="m"><div class="m-l">Quantization</div><div class="m-v">GGUF Q6_K</div></div>
+        <div class="m"><div class="m-l">Target Env</div><div class="m-v">On-Premise · 폐쇄망</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      우정사업본부
+      <span class="sub">작성자 · 송정욱</span>
+    </div>
+    <div class="cv-foot-r">EXAONE 3.5 2.4B-Instruct-GGUF · On-Premise SLM Technical Analysis</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BODY PAGE -->
+<!-- ============================================================ -->
+<section class="sheet">
+
+  <!-- ========== STUDENT IDENTITY ========== -->
+  <div class="id-block">
+    <div class="lbl">작성자 정보 · Report Author</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">소속 기관</span>
+        <span class="v">우정사업본부</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">작성자</span>
+        <span class="v">송정욱</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">분석 모델명</span>
+        <span class="v">EXAONE-3.5-2.4B-Instruct-GGUF (Q6_K)</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v">https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct-GGUF</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body">공공기관 업무 자동화에서 언어모델 도입의 최대 장벽은 <code>보안</code>과 <code>비용</code>이다. 클라우드 기반 대형 모델(GPT-4, Claude 등)은 민감 문서의 외부 전송 문제로 망분리 환경에 적용할 수 없고, 자체 GPU 클러스터 운영은 수억 원의 초기 투자를 수반한다. EXAONE 3.5 2.4B-Instruct-GGUF(Q6_K)를 선택한 이유는 다음 세 가지 기준을 동시에 충족하는 유일한 한국어 특화 SLM이기 때문이다.
+
+첫째, <strong>한국어 형태소 최적화 토크나이저</strong>다. SuperBPE 기반 102,400개의 대규모 어휘 사전은 교착어 특성상 단어 분절이 복잡한 한국어를 처리할 때, GPT-2 계열 50,000 vocab 대비 토큰 소비량을 약 30% 절감한다. 행정 문서는 단문보다 복합 명사·조사 결합 구조가 빈번하므로, 이 효율성 차이는 32K 컨텍스트 창 활용도와 추론 속도 모두에 직접적 영향을 미친다.
+
+둘째, <strong>폐쇄망 단독 실행 가능성</strong>이다. Q6_K 양자화 적용 시 모델 가중치가 약 2.19GB로 압축되어, 인터넷 연결 없이 16GB RAM 데스크탑에서 Ollama + llama.cpp 스택만으로 구동된다. 이는 우정사업본부 내부망 환경에서 외부 API 의존 없이 민감 데이터를 처리할 수 있음을 의미한다.
+
+셋째, <strong>라이선스 적합성</strong>이다. EXAONE AI Model License Agreement 1.1-NC는 비영리 연구 및 내부 행정 활용을 허용하므로, 공공기관의 내부 업무 자동화 목적에 법적 문제가 없다.</div>
+  </div>
+
+  <!-- ========== SECTION 2 ========== -->
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody>
+      <tr><td class="k">모델명</td><td class="v">EXAONE-3.5-2.4B-Instruct-GGUF (Q6_K Quantization)</td></tr>
+      <tr><td class="k">개발 주체</td><td class="v">LG AI Research (대한민국)</td></tr>
+      <tr><td class="k">모델 규모</td><td class="v">공칭 2.4B · 실제 가중치 약 2.14B 파라미터</td></tr>
+      <tr><td class="k">라이선스</td><td class="v">EXAONE AI Model License Agreement 1.1 – NC (비영리 연구 및 내부 업무 활용 허용, 상업적 서비스 제공 불가)</td></tr>
+      <tr><td class="k">모델 유형</td><td class="v">Instruct (SFT + DPO 정렬 완료) · 한국어–영어 이중언어 최적화</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========== SECTION 3 ========== -->
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body"><strong>사전학습(Pre-training):</strong> 한국어와 영어를 5:5 비율로 혼합한 대규모 멀티링궐 코퍼스로 1차 사전학습을 수행했다. 이후 텍스트에서 핵심 개념을 추출한 <em>Taxonomy(지식 계층)</em> 기반의 고품질 데이터를 활용해 2차 정밀 학습(Continual Pre-training)을 진행함으로써, 일반 도메인 코퍼스만 사용했을 때의 사실 오류율과 논리 일관성 문제를 보완했다. 이 2단계 사전학습 구조는 Phi-3 시리즈의 "textbook-quality data" 전략과 유사한 접근법으로, 파라미터 효율 대비 추론 품질을 극대화하는 데 효과적이다.
+
+<strong>SFT(Supervised Fine-Tuning):</strong> 약 800만 건의 웹 코퍼스에서 증류된 핵심 지식 쌍(instruction–response)을 학습 데이터로 활용했다. 단순 Q&amp;A 형태를 넘어, 다단계 사고 과정(chain-of-thought 형식)이 포함된 데이터를 통해 복합 지시문 이행 능력을 강화했다. 이 과정은 모델의 Format Following 능력, 즉 JSON 구조화 출력이나 마크다운 형식 준수 등의 실무 활용에 직결되는 역량을 결정한다.
+
+<strong>DPO(Direct Preference Optimization):</strong> RLHF의 보상 모델 학습 비용과 학습 불안정성을 제거한 DPO를 사용해 인간 선호도를 정렬했다. 선호(chosen)·비선호(rejected) 쌍으로 구성된 비교 데이터를 통해 유해 출력 억제, 정직성 향상, 한국어 경어체 준수 등의 행동 정렬을 수행했다. SFT가 "무엇을 말할 것인가"를 학습시킨다면 DPO는 "어떻게 말할 것인가"의 품질과 안전성을 정제하는 단계다.
+
+<strong>양자화(Quantization):</strong> GGUF Q6_K 방식은 6비트 양자화로, 가중치를 블록 단위로 분할한 뒤 각 블록에서 스케일 팩터(k-quants)를 추출해 정밀도 손실을 최소화한다. BF16 원본 대비 메모리 점유는 약 63% 수준(2.19GB)으로 줄이면서, perplexity 증가폭은 Q4_K_M 대비 절반 이하로 유지한다. CPU 추론 엔진인 <code>llama.cpp</code>에서 AVX2 명령어 셋을 활용해 행렬 연산을 벡터화하므로, 외장 GPU 없이도 실용적인 추론 속도를 달성한다.</div>
+  </div>
+
+  <!-- ========== SECTION 4 ========== -->
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody>
+      <tr><td class="k">Architecture</td><td class="v">Decoder-only Transformer (EXAONE 자체 구조 · LLaMA 계열과 유사한 RoPE 위치 인코딩 적용)</td></tr>
+      <tr><td class="k">Context Length</td><td class="v">32,768 토큰 (32K) — 수십 페이지 분량의 행정 보고서 단일 패스 처리 가능</td></tr>
+      <tr><td class="k">Hidden Size</td><td class="v">2,048 (config.json: <code>hidden_size: 2048</code>)</td></tr>
+      <tr><td class="k">Layers</td><td class="v">30 Transformer Decoder Blocks — 2.4B 규모 대비 깊은 레이어로 추론 품질 확보</td></tr>
+      <tr><td class="k">Attention Heads</td><td class="v">Q-heads: 32 / KV-heads: 8 → GQA(Grouped Query Attention) 적용. KV-cache 메모리를 75% 절감하여 장문 처리 시 메모리 효율 극대화</td></tr>
+      <tr><td class="k">Tokenizer</td><td class="v">SuperBPE 기반 · Vocab size: 102,400 — 한국어 형태소 분절 최적화로 타 글로벌 모델 대비 한국어 토큰 효율 약 30% 향상</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========== SECTION 5 ========== -->
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body"><code>config.json</code> — 모델의 정적 구조를 정의하는 청사진 파일이다. <code>hidden_size: 2048</code>, <code>num_hidden_layers: 30</code>, <code>num_attention_heads: 32</code>, <code>num_key_value_heads: 8</code> 등 아키텍처 하이퍼파라미터가 모두 기록되며, 추론 엔진이 가중치 텐서를 올바르게 로드하기 위한 참조 값으로 사용된다.
+
+<code>tokenizer.json</code> + <code>tokenizer_config.json</code> — 102,400개 어휘 사전과 SuperBPE 병합 규칙, 특수 토큰(<code>[BOS]</code>, <code>[EOS]</code>, <code>[PAD]</code>) 매핑 정보를 담는다. 한국어 자모 분해 패턴과 교착어 처리를 위한 서브워드 규칙이 포함되어 있어, 이 파일이 곧 EXAONE의 한국어 효율성의 핵심 근거다.
+
+<code>generation_config.json</code> — 디코딩 전략의 기본값을 정의한다. <code>temperature: 1.0</code>, <code>repetition_penalty: 1.0</code> 등 권장 샘플링 파라미터가 명시되어 있다. 행정 문서 생성처럼 결정론적 출력이 필요한 경우 <code>temperature: 0.1~0.3</code>, <code>do_sample: false</code>로 변경해 greedy decoding에 가깝게 운용하는 것이 바람직하다.
+
+<code>model.gguf (Q6_K)</code> — 6비트 k-quants 방식으로 압축된 실제 가중치 파일이다. GGUF(GPT-Generated Unified Format)는 단일 파일에 메타데이터·토크나이저·가중치를 모두 통합한 포맷으로, <code>llama.cpp</code> 및 <code>Ollama</code>가 직접 로드한다. 파일 크기 약 2.19GB이며 별도 변환 없이 CPU 추론 환경에서 즉시 사용 가능하다.
+
+<code>special_tokens_map.json</code> — 시스템 프롬프트 구분자(<code>[|system|]</code>, <code>[|assistant|]</code> 등 EXAONE 전용 채팅 템플릿 토큰)를 정의한다. Ollama 사용 시 이 템플릿이 자동 적용되나, 직접 <code>llama.cpp</code>를 호출할 때는 <code>--chat-template</code> 옵션을 명시해야 지시문 추종 성능이 보장된다.</div>
+  </div>
+
+  <!-- ========== SECTION 6 ========== -->
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body"><strong>① 행정 문서 초안 자동 생성:</strong> SFT 단계에서 공공 문체와 격식 구조를 학습한 EXAONE은 기안문·협조 공문·보도자료 등의 초안을 생성하는 데 즉시 활용 가능하다. 사용자가 핵심 키워드와 맥락만 제공하면 모델이 문단 구조·경어체·근거 논리를 갖춘 초안을 반환하며, 담당자는 최종 검토와 서명에만 집중할 수 있다.
+
+<strong>② 한글(HWP/HWPX) 문서 분석 및 요약:</strong> <code>python-hwpx</code> 라이브러리로 본문 텍스트를 추출한 뒤 EXAONE의 32K 컨텍스트 창에 투입해 대형 보고서 전문을 단일 패스로 요약할 수 있다. 32K 컨텍스트는 A4 약 40~50페이지 분량에 해당하며, 연간 보고서·감사 결과서 수준의 문서를 통째로 처리하기에 충분하다.
+
+<strong>③ 한셀(Hancel) 데이터 구조화 처리:</strong> <code>InputBox API</code>를 통해 스프레드시트의 원시 데이터를 모델에 전달하면, 통계 해석·이상값 탐지·테이블 정규화·요약문 작성 등의 분석 업무를 자동화할 수 있다. 특히 정형화되지 않은 집계 데이터를 자연어 보고서 형태로 변환하는 시나리오에서 효과적이다.
+
+<strong>④ 내부 Q&amp;A / RAG 기반 정책 검색 시스템:</strong> 내부 지침서·법령 해설서를 벡터 DB에 임베딩하고, EXAONE을 RAG(Retrieval-Augmented Generation) 파이프라인의 리더 모델로 배치하면, 직원이 자연어로 질의했을 때 근거 문서를 인용하며 답변하는 폐쇄형 지식 검색 시스템을 구현할 수 있다. 외부 통신이 없으므로 기밀 정책 문서도 안전하게 처리된다.
+
+<strong>⑤ 폐쇄망 AI 비서 (Ollama 단독 구동):</strong> 인터넷이 완전 차단된 망분리 환경에서도 <code>Ollama</code> 프레임워크를 통해 모델을 로컬 API 서버로 구동할 수 있다. i5-14500 CPU 환경에서 초당 약 20~30 토큰의 생성 속도를 달성하여, 질의 응답·초안 작성·번역 등 비서 업무의 실시간 응답성을 확보한다.</div>
+  </div>
+
+  <!-- ========== SECTION 7 ========== -->
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body"><strong>① 환각(Hallucination) 위험:</strong> 2.4B 규모의 SLM은 대형 모델 대비 사실 저장 용량(factual capacity)이 제한적이어서, 학습 데이터에 포함되지 않은 최신 법령 개정·인사 정보·사건 세부 내용에 대해 그럴듯하지만 부정확한 정보를 생성할 수 있다. RAG 파이프라인을 통해 검색된 문서를 컨텍스트로 제공하거나, 모델 출력에 반드시 출처 기반 검증 단계를 추가해야 한다. 자율적 사실 판단이 필요한 민원 결정·법적 해석 업무에는 단독 적용을 지양한다.
+
+<strong>② 모델 용량 대비 복합 추론 한계:</strong> 수학적 다단계 연산(multi-step arithmetic)이나 고도의 논리 체인이 필요한 작업에서는 7B 이상 모델 대비 오류율이 유의미하게 높아진다. KoMT-Bench 7.24점은 7B급에 근접한 수준이나 절대적 정밀도가 요구되는 예산 계산·통계 분석에는 출력 값 검증이 필수다.
+
+<strong>③ Q6_K 양자화 정밀도 손실:</strong> BF16 원본 대비 가중치 정밀도가 낮아져 perplexity가 소폭 상승한다. 일반 문서 생성 업무에서는 체감 차이가 미미하나, 코드 생성이나 JSON 스키마 준수 등 형식 정확도가 중요한 작업에서는 Q8_0 또는 BF16 추론 환경(GPU 필요)과의 품질 비교 검토가 권장된다.
+
+<strong>④ 라이선스 제약:</strong> EXAONE AI Model License 1.1-NC는 외부 사용자 대상 상업적 서비스(민원 챗봇 공개 서비스 등)에 적용할 경우 별도 협의가 필요하다. 내부 직원 전용 도구로만 운용하는 한 문제가 없으나, 서비스 범위 확장 시 LG AI Research와의 라이선스 협의를 사전 검토해야 한다.
+
+<strong>⑤ 편향 및 공정성:</strong> 한국어·영어 5:5 혼합 학습 특성상 특정 지역·직군에 대한 미세한 서술 편향이 존재할 수 있다. 대민 서비스 문서를 모델이 직접 생성할 경우, 공정성 감사(bias audit) 프로세스를 별도 수립하는 것이 바람직하다.</div>
+  </div>
+
+  <!-- ========== SECTION 8 ========== -->
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body">EXAONE 3.5 2.4B-Instruct-GGUF(Q6_K)는 현재 공개된 한국어 특화 SLM 중 <strong>온프레미스 폐쇄망 환경에서의 실용성 대비 성능비가 가장 뛰어난 모델</strong>이라고 평가한다.
+
+핵심 근거는 세 가지다. 첫째, LogicKor 8.51점·KoMT-Bench 7.24점이라는 벤치마크 수치는 2.4B 규모가 7B급 성능 영역에 진입했음을 보여준다. 이는 SuperBPE 기반 고효율 토크나이저와 2단계 사전학습(Taxonomy-driven Continual PT)이 파라미터 효율을 극대화한 결과다. 둘째, GQA 적용으로 KV-cache 메모리 사용량을 MHA 대비 75% 절감해 32K 장문 컨텍스트를 16GB RAM 환경에서 현실적으로 운용할 수 있다. 셋째, GGUF Q6_K 포맷은 BF16 대비 perplexity 손실을 최소화하면서 설치와 구동을 단일 명령어(<code>ollama run exaone3.5:2.4b</code>)로 완결한다는 점에서 IT 자원이 제한된 공공기관 환경에 적합하다.
+
+<strong>도입 권고 조건:</strong> 단순 반복 문서 초안 작성·내부 Q&amp;A·보고서 요약 등 "초안 생성 후 인간 검토" 구조의 업무에 먼저 적용하고, 모델 출력을 최종 의사결정에 바로 반영하지 않는 <em>Human-in-the-loop</em> 원칙을 준수해야 한다.
+
+<strong>향후 과제:</strong> <code>python-hwpx</code>와 <code>Ollama REST API</code>를 연동한 한글 문서 분석 파이프라인 구축, 도메인 특화 SFT(우정 업무 관련 지침서·민원 응대 데이터)를 통한 LoRA 파인튜닝 검토, 그리고 RAG 파이프라인 통합 시 청크 전략(청크 크기·오버랩)과 리트리버 성능 최적화가 다음 단계 과제로 권고된다.</div>
+  </div>
+
+  <!-- ========== SECTION 9 ========== -->
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list" id="refList">
+      <li>Hugging Face 공식 모델 페이지 (LG AI Research): https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct-GGUF</li>
+      <li>EXAONE 3.5 공식 GitHub 저장소: https://github.com/LG-AI-EXAONE/EXAONE-3.5</li>
+      <li>기술 논문 (arXiv): EXAONE 3.5 — Series of Large Language Models for Real-world Use Cases · https://arxiv.org/html/2412.04862v3</li>
+      <li>LG AI Research 공식 기술 보고서 (PDF): https://www.lgresearch.ai/data/upload/tech_report/ko/Technical_report_EXAONE_3.5.pdf</li>
+      <li>Ollama 라이브러리 페이지 (로컬 실행): https://ollama.com/library/exaone3.5:2.4b</li>
+      <li>EXAONE AI Model License Agreement 1.1-NC (ScanCode LicenseDB): https://scancode-licensedb.aboutcode.org/exaone-ai-model-1.1-nc.html</li>
+    </ul>
+  </div>
+
+  <!-- ========== SUBMISSION ========== -->
+  <div class="callout">
+    <div class="label">작성 정보 · Report Information</div>
+    <p><strong style="color:var(--ink);font-weight:700">소속 기관:</strong> 우정사업본부</p>
+    <p><strong style="color:var(--ink);font-weight:700">작성자:</strong> 송정욱</p>
+    <p><strong style="color:var(--ink);font-weight:700">분석 대상:</strong> EXAONE-3.5-2.4B-Instruct-GGUF (Q6_K) · LG AI Research</p>
+    <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">본 보고서는 언어모델 전문가 관점에서 EXAONE 3.5 2.4B 모델의 아키텍처·학습 파이프라인·양자화 특성을 분석하고, 우정사업본부 폐쇄망 환경에서의 공공업무 자동화 적용 가능성을 검토한 기술 분석 문서입니다.</p>
+  </div>
+
+</section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT -->
+<!-- ============================================================ -->
+<script>
+let editMode = false;
+
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){
+    btn.classList.add('active');
+    btn.textContent = '✎ EDITING';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '✎ EDIT';
+  }
+}
+
+// HTML 저장 — 현재 DOM 상태 그대로 다운로드
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault(); saveHtml();
+  } else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){
+      document.activeElement.blur();
+    } else {
+      toggleEdit();
+    }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){
+      toggleEdit();
+    }
+  }
+});
+</script>
+
+
+
+<div id="autoglm-main-content" class="autoglm-main-content" data-version="0.1.2"></div></body></html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko" style="user-select: auto !important;"><head style="user-select: auto !important;">
+<meta charset="utf-8" style="user-select: auto !important;">
+<meta content="width=device-width,initial-scale=1" name="viewport" style="user-select: auto !important;">
+<title style="user-select: auto !important;">전북특별자치도교육청 · EXAONE-3.5-2.4B-Instruct SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet" style="user-select: auto !important;">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" style="user-select: auto !important;">
+<style style="user-select: auto !important;">
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+/* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+.sec .body[contenteditable=true]:empty::before,
+.sec p[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+.kv-table td.v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+<script id="book-embed-detect">
+  if (window.self !== window.top) { document.documentElement.classList.add('book-embedded'); }
+</script>
+<style id="book-embed-overrides">
+  /* Applied only when this report is loaded inside the book viewer iframe.
+     Keep the original A4-ish design but hide the report's fixed toolbar
+     (parent viewer already provides navigation/controls). */
+  html.book-embedded .tb { display: none !important; }
+  html.book-embedded body { padding-top: 0 !important; }
+  html.book-embedded .stack { padding: 24px 0 60px !important; }
+</style>
+</head>
+<body style="user-select: auto !important;" class="">
+<!-- ============================================================ -->
+<!-- TOOLBAR -->
+<!-- ============================================================ -->
+<div class="tb" style="user-select: auto !important;">
+<div class="tb-brand" style="user-select: auto !important;">SLM 모델 조사 보고서<span class="sub" style="user-select: auto !important;">Day 1 · Assignment</span></div>
+<div class="tb-spacer" style="user-select: auto !important;"></div>
+<button class="tb-edit" id="btnEdit" onclick="toggleEdit()" style="user-select: auto !important;">✎ EDIT</button>
+<button class="tb-save" onclick="saveHtml()" style="user-select: auto !important;">⬇ HTML 저장</button>
+<button class="tb-print" onclick="window.print()" style="user-select: auto !important;">⬇ PDF 인쇄</button>
+</div>
+<div class="stack" style="user-select: auto !important;">
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<section class="sheet cv" style="user-select: auto !important;">
+<div class="cv-content" style="user-select: auto !important;">
+<div class="cv-top" style="user-select: auto !important;">
+<div class="cv-org" style="user-select: auto !important;">
+<strong style="user-select: auto !important;">AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+</div>
+<div class="cv-center" style="user-select: auto !important;">
+<div class="cv-year" style="user-select: auto !important;">Day 1 · Assignment 01</div>
+<h1 class="cv-title" style="user-select: auto !important;">Hugging Face SLM<br style="user-select: auto !important;">모델 조사 보고서</h1>
+<div class="cv-rule" style="user-select: auto !important;"></div>
+<div class="cv-doctype" style="user-select: auto !important;">기술 분석 · 모델 카드 분해 리포트</div>
+<div class="cv-sub" style="user-select: auto !important;">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+</div>
+<div class="cv-bottom" style="user-select: auto !important;">
+<div class="cv-meta" style="user-select: auto !important;">
+<div class="m" style="user-select: auto !important;"><div class="m-l" style="user-select: auto !important;">Track</div><div class="m-v" style="user-select: auto !important;">SLM Research</div></div>
+<div class="m" style="user-select: auto !important;"><div class="m-l" style="user-select: auto !important;">Format</div><div class="m-v" style="user-select: auto !important;">HTML Report</div></div>
+<div class="m" style="user-select: auto !important;"><div class="m-l" style="user-select: auto !important;">Submission</div><div class="m-v" style="user-select: auto !important;">GitHub Public Repo</div></div>
+</div>
+</div>
+</div>
+<div class="cv-foot" style="user-select: auto !important;">
+<div class="cv-foot-l" style="user-select: auto !important;">
+      AI 전문인재 과정
+      <span class="sub" style="user-select: auto !important;">Day 1 · 1B~7B Small Language Model</span>
+</div>
+<div class="cv-foot-r" style="user-select: auto !important;">Hugging Face Model Card Analysis · Technical Report Template</div>
+</div>
+</section>
+<!-- ============================================================ -->
+<!-- BODY PAGE -->
+<!-- ============================================================ -->
+<section class="sheet" style="user-select: auto !important;">
+<!-- ========== STUDENT IDENTITY ========== -->
+<div class="id-block" style="user-select: auto !important;">
+<div class="lbl" style="user-select: auto !important;">Student Identity · 수강생 정보</div>
+<div class="id-grid" style="user-select: auto !important;">
+<div class="id-cell" style="user-select: auto !important;">
+<span class="k" style="user-select: auto !important;">수강생 소속</span>
+<span class="v" contenteditable="true" data-ph="예: 행정안전부" style="user-select: auto !important;">전북특별자치도교육청</span>
+</div>
+<div class="id-cell" style="user-select: auto !important;">
+<span class="k" style="user-select: auto !important;">수강생 이름</span>
+<span class="v" contenteditable="true" data-ph="예: 홍길동" style="user-select: auto !important;">박호용</span>
+</div>
+<div class="id-cell" style="user-select: auto !important;">
+<span class="k" style="user-select: auto !important;">선택 모델명</span>
+<span class="v" contenteditable="true" data-ph="예: Qwen2.5-3B-Instruct" style="user-select: auto !important;">LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</span>
+</div>
+<div class="id-cell" style="user-select: auto !important;">
+<span class="k" style="user-select: auto !important;">Hugging Face 모델 링크</span>
+<span class="v" contenteditable="true" data-ph="https://huggingface.co/..." style="user-select: auto !important;">https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</span>
+</div>
+</div>
+</div>
+<!-- ========== SECTION 1 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">01</span>모델 선택 이유</h2>
+<div class="body" contenteditable="true" data-ph="이 모델을 선택한 이유를 작성합니다. 특정 산업, 공공 업무, 행정, 문서처리, 질의응답 등 어떤 관점에서 적합하다고 판단했는지 설명합니다." style="user-select: auto !important;">- EXAONE-3.5-2.4B-Instruct는 LG AI Research가 공개한 한국어·영어 이중언어 instruction-tuned SLM으로, 공공기관에서 많이 다루는 한국어 문서 처리와 질의응답 업무를 검토하기에 적합하다고 판단하였다.<br>- 모델 규모가 2.4B급으로 과제 조건인 1B 이상 7B 이하 범위에 들어가며, 32K 토큰 장문 컨텍스트를 지원하여 긴 계획서, 지침, 회의자료, 보고서, 매뉴얼 기반 RAG 업무에 적용 가능성을 검토하기 좋다.<br>- 한국어 벤치마크와 장문 이해 평가 결과가 함께 제시되어 있어 단순 영어권 모델보다 교육행정·민원·내부 문서 분석 관점에서 설명할 근거가 비교적 명확하다.<br>- 예시 모델을 그대로 사용하는 대신 국내 연구기관이 공개한 한국어 지원 SLM을 선정하여, 전북교육청의 생성형 AI 기반 업무지원·문서 분석·교육데이터 활용 시나리오와 연결해 분석하였다.</div>
+</div>
+<!-- ========== SECTION 2 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">02</span>모델 기본 정보</h2>
+<table class="kv-table" style="user-select: auto !important;">
+<tbody style="user-select: auto !important;"><tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">모델명</td><td class="v" contenteditable="true" data-ph="모델 카드 상단의 정식 명칭을 입력하세요." style="user-select: auto !important;">LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">개발 주체</td><td class="v" contenteditable="true" data-ph="개발 회사·기관·연구팀·개인 개발자 등" style="user-select: auto !important;">LG AI Research</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">모델 규모</td><td class="v" contenteditable="true" data-ph="예: 1.5B / 3B / 7B" style="user-select: auto !important;">2.4B급 모델<br>※ 모델 카드 기준: embeddings 제외 파라미터 수 2.14B</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">라이선스</td><td class="v" contenteditable="true" data-ph="예: Apache-2.0 / MIT / Llama 3 Community / 기타" style="user-select: auto !important;">EXAONE AI Model License Agreement 1.1 - NC<br>※ 연구·비상업 목적 중심으로 검토 필요, 상업적·실서비스 활용 시 라이선스 확인 필요</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">모델 유형</td><td class="v" contenteditable="true" data-ph="Base / Instruct / Chat / Domain-specific 등" style="user-select: auto !important;">Instruction-tuned / Conversational / Text Generation 모델<br>한국어·영어 이중언어 생성형 언어모델</td></tr>
+</tbody></table>
+</div>
+<!-- ========== SECTION 3 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">03</span>학습 데이터와 튜닝 방식</h2>
+<div class="body" contenteditable="true" data-ph="모델이 어떤 데이터로 사전학습되었는지, 공개 데이터인지, 특정 산업·언어·도메인 데이터가 포함되었는지, Instruction Tuning · SFT · RLHF · DPO · LoRA · QLoRA 등 어떤 튜닝이 적용되었는지 정리합니다. 모델 카드에 명확히 공개되어 있지 않다면 '공개 범위 내에서는 확인 어려움'이라고 작성합니다." style="user-select: auto !important;">- 사전학습 데이터: 기술보고서 기준 EXAONE 3.5 2.4B 모델은 약 6.5T 토큰 규모의 학습 코퍼스를 사용한 것으로 제시되어 있다. 다만 개별 원천 데이터셋의 상세 목록은 공개 범위 내에서 모두 확인되지는 않는다.<br>- 데이터 구성 방식: 1단계 사전학습에서는 일반 도메인 성능 향상을 위해 다양한 출처에서 수집·정제한 대규모 코퍼스를 사용하고, 2단계 사전학습에서는 평가를 통해 보강이 필요한 영역과 장문 이해 능력 향상에 초점을 둔 것으로 설명되어 있다.<br>- 언어 특성: 기술보고서상 어휘 구성은 한국어와 영어가 대략 50:50 비율로 구성된 것으로 제시되어, 한국어 행정문서 처리 가능성을 검토할 수 있다.<br>- 튜닝 방식: 모델명과 모델 카드상 Instruct 모델이며, 기술보고서에서는 사전학습 이후 Supervised Fine-Tuning(SFT)과 Preference Optimization을 수행했다고 설명한다. Preference Optimization에는 DPO, SimPO와 같은 직접 선호 최적화 계열 방법이 언급되어 있다.<br>- LoRA·QLoRA 적용 여부: 공개된 모델 카드와 기술보고서 범위에서는 LoRA 또는 QLoRA 방식으로 학습되었다는 내용은 확인되지 않는다.<br>- 데이터 준수: LG AI Research는 데이터 수집, 모델 학습, 정보 제공 과정에서 AI Compliance 검토를 수행한다고 설명한다. 다만 공공기관 업무 적용 시에는 별도의 개인정보·보안 검토가 필요하다.</div>
+</div>
+<!-- ========== SECTION 4 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">04</span>파라미터 및 구조적 특징</h2>
+<table class="kv-table" style="user-select: auto !important;">
+<tbody style="user-select: auto !important;"><tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Architecture</td><td class="v" contenteditable="true" data-ph="예: Llama / Qwen2 / Mistral / Phi 등" style="user-select: auto !important;">Decoder-only Transformer 기반 EXAONE 구조<br>config.json 기준 architectures: ExaoneForCausalLM, model_type: exaone</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Context Length</td><td class="v" contenteditable="true" data-ph="예: 4096 / 8192 / 32768 / 128000 토큰" style="user-select: auto !important;">32,768 토큰<br>config.json 기준 max_position_embeddings: 32768</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Hidden Size</td><td class="v" contenteditable="true" data-ph="config.json의 hidden_size 값" style="user-select: auto !important;">2,560<br>config.json 기준 hidden_size: 2560</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Layers</td><td class="v" contenteditable="true" data-ph="num_hidden_layers 값" style="user-select: auto !important;">30개<br>config.json 기준 num_layers: 30</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Attention Heads</td><td class="v" contenteditable="true" data-ph="num_attention_heads · num_key_value_heads" style="user-select: auto !important;">GQA 구조<br>num_attention_heads: 32<br>num_key_value_heads: 8<br>head_dim: 80</td></tr>
+<tr style="user-select: auto !important;"><td class="k" style="user-select: auto !important;">Tokenizer</td><td class="v" contenteditable="true" data-ph="BPE / SentencePiece / Tiktoken 등 + vocab size" style="user-select: auto !important;">BBPE 계열 토크나이저<br>vocab_size: 102,400<br>한국어·영어 어휘를 함께 고려한 이중언어 모델</td></tr>
+</tbody></table>
+</div>
+<!-- ========== SECTION 5 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">05</span>모델 파일 구성</h2>
+<div class="body" contenteditable="true" data-ph="Hugging Face 저장소에 있는 config.json · tokenizer.json · model.safetensors · generation_config.json · special_tokens_map.json 등 주요 파일이 어떤 역할을 하는지 정리합니다." style="user-select: auto !important;">- README.md: 모델 소개, 사용 방법, 성능 평가, 한계, 라이선스, 인용 정보가 정리된 모델 카드 역할을 한다.<br>- config.json: 모델 아키텍처와 실행 설정을 담는 핵심 파일이다. hidden_size, num_layers, num_attention_heads, num_key_value_heads, max_position_embeddings, vocab_size 등 모델 구조 분석에 필요한 값이 포함된다.<br>- tokenizer.json / tokenizer_config.json / vocab.json / merges.txt: 입력 문장을 토큰 단위로 나누고 다시 복원하기 위한 토크나이저 관련 파일이다. 한국어와 영어 문장을 모델이 처리할 수 있는 숫자 ID 시퀀스로 변환하는 역할을 한다.<br>- model-00001-of-00002.safetensors, model-00002-of-00002.safetensors: 실제 학습된 가중치가 저장된 파일이다. safetensors 형식은 모델 파라미터를 안전하고 효율적으로 저장하는 포맷이며, 이 모델은 가중치가 2개 shard로 나뉘어 제공된다.<br>- model.safetensors.index.json: 여러 개로 분할된 safetensors 파일 중 어떤 파라미터가 어느 shard에 들어 있는지 알려주는 색인 파일이다.<br>- generation_config.json: BOS, EOS, PAD 토큰 등 텍스트 생성 시 기본적으로 참조하는 생성 관련 설정을 담고 있다.<br>- configuration_exaone.py / modeling_exaone.py: EXAONE 전용 설정과 모델 구조를 Transformers에서 불러오기 위한 custom code 파일이다. 따라서 사용 시 trust_remote_code=True 옵션이 필요할 수 있다.</div>
+</div>
+<!-- ========== SECTION 6 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">06</span>활용 가능 업무</h2>
+<div class="body" contenteditable="true" data-ph="공공기관 행정·민원 응대·내부 문서 분석·질의응답·요약·RAG 검색·챗봇·보고서 초안 작성 등 어떤 업무에 어떻게 활용 가능한지 구체 시나리오로 작성합니다." style="user-select: auto !important;">- 내부 문서 질의응답: 교육청 지침, 업무편람, 회의자료, 계획서, 매뉴얼을 RAG로 연결하여 “해당 업무의 절차가 무엇인지”, “근거 조항이 어디인지”를 찾아주는 내부 업무 챗봇에 활용할 수 있다.<br>- 공문서·보고서 초안 작성 보조: 긴 참고자료를 바탕으로 추진 배경, 주요 내용, 기대효과, 유의사항 등을 요약하고 개조식 초안을 작성하는 보조 모델로 검토할 수 있다.<br>- 민원·질의 대응 지원: 공개 가능한 규정, 안내문, FAQ를 기반으로 교직원 또는 민원인의 반복 질의에 대한 초안 답변을 생성하는 데 활용할 수 있다. 단, 최종 답변은 담당자가 검토해야 한다.<br>- 교육데이터 허브 활용: 데이터 자료실, 데이터 도구실, 데이터 분석실의 게시글·첨부자료를 검색하고 요약하여 사용자가 필요한 자료를 빠르게 찾도록 지원할 수 있다.<br>- 교육행정데이터통합관리시스템 연계: 데이터 항목 설명, 분석 결과 해석, 지표 정의 안내 등 데이터 기반 행정업무 보조 기능에 활용 가능성이 있다.<br>- 장문 문서 분석: 32K 토큰 컨텍스트를 활용하면 여러 쪽의 계획서나 지침을 한 번에 넣고 핵심 쟁점, 담당 부서별 조치사항, 검토 필요사항을 추출하는 업무에 적용할 수 있다.<br>- 온프레미스·폐쇄망 검토: 2.4B급 모델은 상대적으로 작기 때문에 GPU 자원이 제한된 내부망 실험 환경에서 PoC를 수행하기에 대형 모델보다 부담이 작다.</div>
+</div>
+<!-- ========== SECTION 7 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">07</span>한계와 주의사항</h2>
+<div class="body" contenteditable="true" data-ph="성능 한계 · 환각 가능성 · 한국어 지원 수준 · 보안 이슈 · 라이선스 제한 · 상업적 활용 가능 여부 · 평가 데이터 한계 등을 정리합니다." style="user-select: auto !important;">- 정확성 한계: 모델은 확률적으로 문장을 생성하므로 실제 규정·법령·지침과 다른 내용을 그럴듯하게 생성할 수 있다. 공문, 민원, 감사 대응 등 책임 있는 업무에는 반드시 근거 문서 확인 절차가 필요하다.<br>- 최신성 한계: 모델 자체는 학습 시점 이후 정보를 자동으로 알 수 없으므로, 최신 지침·조직개편·법령 개정 사항은 RAG 검색 또는 별도 데이터 갱신이 필요하다.<br>- 한국어 지원 수준: 한국어·영어 이중언어 모델이지만, 전북교육청 내부 행정 용어, K-에듀파인·나이스·교데통 등 특정 시스템 용어는 별도 프롬프트 설계와 내부 문서 기반 보강이 필요하다.<br>- 라이선스 유의: EXAONE AI Model License Agreement 1.1 - NC 조건이 적용되므로, 연구·검토 목적을 넘어 실서비스 또는 상업적 성격의 운영에 활용할 경우 라이선스 검토와 기관 차원의 법무·보안 검토가 필요하다.<br>- 개인정보·보안: 학생, 교직원, 민원인 개인정보가 포함된 자료를 외부 환경에 입력해서는 안 되며, 내부망 적용 시에도 접근권한, 로그 저장, 비식별 처리, 민감정보 차단 절차가 필요하다.<br>- 운영 부담: 모델을 직접 운영할 경우 GPU 서버, 모델 업데이트, 장애 대응, 프롬프트 관리, RAG 데이터 품질관리, 사용자 교육 등 지속적인 운영체계가 필요하다.<br>- 평가 필요: 실제 교육행정 문서에서 요약 정확도, 근거 인용 정확도, 한국어 답변 품질, 응답 속도, 보안성을 별도 검증한 뒤 단계적으로 적용해야 한다.</div>
+</div>
+<!-- ========== SECTION 8 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">08</span>종합 의견</h2>
+<div class="body" contenteditable="true" data-ph="이 모델을 실제 조직 업무에 도입한다면 어떤 조건에서 적합한지, 어떤 추가 검증·POC가 필요한지 본인 의견을 작성합니다." style="user-select: auto !important;">- EXAONE-3.5-2.4B-Instruct는 예시 모델을 그대로 사용하는 대신, 국내 연구기관이 공개한 한국어·영어 지원 SLM을 분석했다는 점에서 과제 취지에 잘 맞는다.<br>- 모델 규모가 2.4B급이라 과제 조건에 적합하며, 32K 토큰 장문 처리와 instruction-tuned 특성을 갖추고 있어 문서 요약, 내부자료 질의응답, RAG 기반 업무도우미, 보고서 초안 작성 등 교육행정 업무와 연결해 설명하기 좋다.<br>- 다만 라이선스가 NC 조건을 포함하고, 학습 데이터의 세부 원천 목록이 모두 공개된 것은 아니므로 실제 조직 도입보다는 내부 PoC, 연구, 교육용 실습, 폐쇄망 적용 가능성 검토 단계에 우선 활용하는 것이 적절하다.<br>- 전북교육청 업무 적용 시에는 ① 공개 가능 자료 기반 RAG 실험, ② 내부 문서 요약 정확도 평가, ③ 개인정보·보안 필터링, ④ 담당자 검토 절차, ⑤ 라이선스 검토를 거친 뒤 제한된 범위에서 단계적으로 검토하는 방안이 적절하다.<br>- 종합적으로 이 모델은 “작지만 한국어 행정문서 실험에 쓸 수 있는 SLM 후보”로 평가할 수 있으며, AI데통이와 같은 매뉴얼 챗봇, 교육데이터 허브 검색 보조, 공문서 초안 작성 지원 등 업무지원형 AI 서비스의 기초 모델 후보로 검토할 수 있다.</div>
+</div>
+<!-- ========== SECTION 9 ========== -->
+<div class="sec" style="user-select: auto !important;">
+<h2 style="user-select: auto !important;"><span class="num" style="user-select: auto !important;">09</span>참고 링크</h2>
+<ul class="link-list" id="refList" style="user-select: auto !important;">
+<li contenteditable="true" data-ph="Hugging Face 모델 페이지: https://huggingface.co/..." style="user-select: auto !important;">Hugging Face 모델 페이지: https://huggingface.co/LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct</li>
+<li contenteditable="true" data-ph="모델 논문 또는 기술 블로그: https://..." style="user-select: auto !important;">기술보고서: https://arxiv.org/abs/2412.04862</li>
+<li contenteditable="true" data-ph="GitHub 저장소: https://github.com/..." style="user-select: auto !important;">공식 GitHub 저장소: https://github.com/LG-AI-EXAONE/EXAONE-3.5</li>
+</ul>
+</div>
+<!-- ========== SUBMISSION ========== -->
+<div class="callout" style="user-select: auto !important;">
+<div class="label" style="user-select: auto !important;">Submission · 제출 정보</div>
+<p style="user-select: auto !important;"><strong style="color: var(--ink); font-weight: 700; user-select: auto !important;">GitHub Repository 주소:</strong> <span contenteditable="true" data-ph="https://github.com/본인아이디/slm-model-report-소속-이름" style="user-select: auto !important;">https://github.com/kain9012-bit/slm-model-report-JeonbukEdu-ParkHoyong</span></p>
+<p style="user-select: auto !important;"><strong style="color: var(--ink); font-weight: 700; user-select: auto !important;">파일명 예시:</strong> 행안부_김민수_slm_report.html</p>
+<p style="margin-top: 3mm; font-size: 10pt; color: var(--ink-mute); user-select: auto !important;">최종 제출 시 EDIT 버튼을 눌러 모든 항목을 채운 뒤, [HTML 저장] 버튼으로 파일을 다운로드해 GitHub Repository에 업로드하세요. 또는 EDIT하지 않고 동일한 양식 그대로 생성형 AI(Claude·ChatGPT 등)에 첨부해 채움을 요청해도 무방합니다.</p>
+</div>
+</section>
+</div>
+<!-- ============================================================ -->
+<!-- SCRIPT -->
+<!-- ============================================================ -->
+<script style="user-select: auto !important;">
+let editMode = false;
+
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){
+    btn.classList.add('active');
+    btn.textContent = '✎ EDITING';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '✎ EDIT';
+  }
+}
+
+// HTML 저장 — 현재 DOM 상태 그대로 다운로드
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault(); saveHtml();
+  } else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){
+      document.activeElement.blur();
+    } else {
+      toggleEdit();
+    }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){
+      toggleEdit();
+    }
+  }
+});
+</script>
+</body></html>

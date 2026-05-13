@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+/* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+.sec .body[contenteditable=true]:empty::before,
+.sec p[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+.kv-table td.v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+</head>
+<body class="" id="artifacts-component-root-html">
+
+<!-- ============================================================ -->
+<!-- TOOLBAR -->
+<!-- ============================================================ -->
+<div class="tb">
+  <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+  <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+  <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+
+<div class="stack">
+
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+    </div>
+
+    <div class="cv-center">
+      <div class="cv-year">Day 1 · Assignment 01</div>
+      <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+      <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+    </div>
+
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Track</div><div class="m-v">SLM Research</div></div>
+        <div class="m"><div class="m-l">Format</div><div class="m-v">HTML Report</div></div>
+        <div class="m"><div class="m-l">Submission</div><div class="m-v">GitHub Public Repo</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      AI 전문인재 과정
+      <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+    </div>
+    <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BODY PAGE -->
+<!-- ============================================================ -->
+<section class="sheet">
+
+  <!-- ========== STUDENT IDENTITY ========== -->
+  <div class="id-block">
+    <div class="lbl">Student Identity · 수강생 정보</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">수강생 소속</span>
+        <span class="v" contenteditable="true" data-ph="예: 행정안전부">병무청</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">수강생 이름</span>
+        <span class="v" contenteditable="true" data-ph="예: 홍길동">김재연</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">선택 모델명</span>
+        <span class="v" contenteditable="true" data-ph="예: Qwen2.5-3B-Instruct"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: normal;">kanana-nano-2.1b-instruct</span></span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v" contenteditable="true" data-ph="https://huggingface.co/..."><a href="https://huggingface.co/kakaocorp/kanana-nano-2.1b-instruct" target="_blank" style="color: rgb(37, 99, 235); text-decoration: underline; font-size: 13px; word-break: break-all; font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-weight: 500; letter-spacing: normal;">https://huggingface.co/kakaocorp/kanana-nano-2.1b-instruct</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 1 ========== -->
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body" contenteditable="true" data-ph="이 모델을 선택한 이유를 작성합니다. 특정 산업, 공공 업무, 행정, 문서처리, 질의응답 등 어떤 관점에서 적합하다고 판단했는지 설명합니다."><p style="margin: 0px 0px 0.9rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background-color: rgb(255, 255, 255);">본 업무는 인터넷 상의&nbsp;<span style="color: rgb(15, 23, 42); font-weight: 600;">허위정보·병역면탈 조장정보·불건전정보</span>를 자동으로 탐지·분류하는 공공행정 목적의 AI 시스템 구축을 목표로 한다. 이 맥락에서&nbsp;<code style="padding: 0px;">kanana-nano-2.1b-instruct</code>를 선택한 이유는 다음과 같다.</p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">한국어 최적화:</span>&nbsp;카카오가 개발한 한국어 중심 이중언어(한·영) 모델로, 동급(2B대) 모델 중 KMMLU(한국어 지식)·HAE-RAE(한국어 이해) 벤치마크에서 최상위 성능을 기록한다.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">RAG 친화적 생태계:</span>&nbsp;동일 시리즈에서 Base·Instruct·Embedding·Function Call·<span style="color: rgb(15, 23, 42); font-weight: 600;">RAG 전용</span>&nbsp;버전이 모두 공개되어, 웹 검색 결과 텍스트를 입력해 판별하는 검색-증강생성(RAG) 파이프라인 구성이 용이하다.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">경량·온프레미스 운영 가능:</span>&nbsp;2.1B 파라미터(BF16 약 4.2 GB)로 GPU 8 GB 이상 서버에서 독립 운영이 가능하여, 행정 보안망(인터넷 망분리) 환경에 적합하다.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">국내 기업 개발:</span>&nbsp;카카오가 개발·공개하여 국산 AI 활용 정책 방향에 부합하며, 기술 지원 창구(kanana-llm@kakaocorp.com)가 명확하다.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">명확한 라이선스:</span>&nbsp;CC-BY-NC-4.0 라이선스로 비상업적 목적의 공공행정 내부 활용이 가능하다(도입 전 법무 검토 권고).</li></ul></div>
+  </div>
+
+  <!-- ========== SECTION 2 ========== -->
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">모델명</td><td class="v" contenteditable="true" data-ph="모델 카드 상단의 정식 명칭을 입력하세요."><span style="color: rgb(51, 65, 85); font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 12px; background-color: rgb(241, 245, 249);">kanana-nano-2.1b-instruct</span></td></tr>
+      <tr><td class="k">개발 주체</td><td class="v" contenteditable="true" data-ph="개발 회사·기관·연구팀·개인 개발자 등"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">카카오(주) — Kakao Corp. (Kanana LLM Team)</span></td></tr>
+      <tr><td class="k">모델 규모</td><td class="v" contenteditable="true" data-ph="예: 1.5B / 3B / 7B"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">약&nbsp;</span><strong style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">2.1 B (21억) 파라미터</strong><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">｜BF16 정밀도｜파일 크기 약 4.17 GB</span></td></tr>
+      <tr><td class="k">라이선스</td><td class="v" contenteditable="true" data-ph="예: Apache-2.0 / MIT / Llama 3 Community / 기타"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">CC-BY-NC-4.0 (비상업적 사용 허용)</span></td></tr>
+      <tr><td class="k">모델 유형</td><td class="v" contenteditable="true" data-ph="Base / Instruct / Chat / Domain-specific 등"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">Instruct (Chat) — SFT + 선호도 최적화(Preference Optimization) 적용 모델</span></td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 3 ========== -->
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body" contenteditable="true" data-ph="모델이 어떤 데이터로 사전학습되었는지, 공개 데이터인지, 특정 산업·언어·도메인 데이터가 포함되었는지, Instruction Tuning · SFT · RLHF · DPO · LoRA · QLoRA 등 어떤 튜닝이 적용되었는지 정리합니다. 모델 카드에 명확히 공개되어 있지 않다면 '공개 범위 내에서는 확인 어려움'이라고 작성합니다."><p style="margin: 0px 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">사전학습(Pre-training) 데이터</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">한국어·영어 이중언어 웹 코퍼스를 중심으로 구성되며,&nbsp;<span style="color: rgb(15, 23, 42); font-weight: 600;">카카오 사용자 데이터는 일절 포함되지 않음</span>을 공식 명시.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">고품질 데이터 필터링(High-quality data filtering), 단계별 사전학습(Staged pre-training), 깊이 업스케일링(Depth up-scaling), 가지치기 및 지식 증류(Pruning &amp; Distillation) 기법을 통해 동급 모델 대비 현저히 낮은 연산 비용(FLOPs)으로 경쟁력 있는 성능을 달성.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">사후학습(Post-training) 방식</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">SFT (Supervised Fine-Tuning):</span>&nbsp;명령 수행 능력 향상을 위한 지도 미세조정. 한국어·영어 Instruction 데이터 학습.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">선호도 최적화 (Preference Optimization):</span>&nbsp;사용자와의 자연스러운 상호작용 품질 향상을 위한 DPO 계열 학습 적용.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">특화 적응(Adaptation) 버전</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">동일 베이스 모델에서&nbsp;<span style="color: rgb(15, 23, 42); font-weight: 600;">Embedding / Function Call / RAG</span>&nbsp;전용 모델이 별도로 학습·공개되어, 검색 증강 생성(RAG) 파이프라인 구성 시 RAG 전용 모델 활용을 권장.</li></ul></div>
+  </div>
+
+  <!-- ========== SECTION 4 ========== -->
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">Architecture</td><td class="v" contenteditable="true" data-ph="예: Llama / Qwen2 / Mistral / Phi 등"><code style="padding: 1px 6px; background: rgb(241, 245, 249); font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 12px; color: rgb(51, 65, 85);">LlamaForCausalLM</code><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">&nbsp;(Llama 계열 디코더 전용 트랜스포머)</span></td></tr>
+      <tr><td class="k">Context Length</td><td class="v" contenteditable="true" data-ph="예: 4096 / 8192 / 32768 / 128000 토큰"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">8,192 tokens (</span><code style="padding: 1px 6px; background: rgb(241, 245, 249); font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 12px; color: rgb(51, 65, 85);">max_position_embeddings: 8192</code><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">)</span></td></tr>
+      <tr><td class="k">Hidden Size</td><td class="v" contenteditable="true" data-ph="config.json의 hidden_size 값"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">1,792 (</span><code style="padding: 1px 6px; background: rgb(241, 245, 249); font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 12px; color: rgb(51, 65, 85);">hidden_size: 1792</code><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">)</span></td></tr>
+      <tr><td class="k">Layers</td><td class="v" contenteditable="true" data-ph="num_hidden_layers 값"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">32 레이어 (</span><code style="padding: 1px 6px; background: rgb(241, 245, 249); font-family: &quot;JetBrains Mono&quot;, monospace; font-size: 12px; color: rgb(51, 65, 85);">num_hidden_layers: 32</code><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">)</span></td></tr>
+      <tr><td class="k">Attention Heads</td><td class="v" contenteditable="true" data-ph="num_attention_heads · num_key_value_heads"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">Q-heads: 24 / KV-heads: 8 (Grouped Query Attention, GQA 적용)</span></td></tr>
+      <tr><td class="k">Tokenizer</td><td class="v" contenteditable="true" data-ph="BPE / SentencePiece / Tiktoken 등 + vocab size"><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">Llama 계열 BPE 토크나이저 / Vocab size:&nbsp;</span><strong style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">128,256</strong><span style="color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 14px;">&nbsp;/ 파일 크기 17.2 MB</span></td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 5 ========== -->
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body" contenteditable="true" data-ph="Hugging Face 저장소에 있는 config.json · tokenizer.json · model.safetensors · generation_config.json · special_tokens_map.json 등 주요 파일이 어떤 역할을 하는지 정리합니다."><ul class="file-list" style="list-style: none; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">📄 README.md</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">24.8 kB — 모델 카드(소개·성능·사용법·라이선스)</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">⚙️ config.json</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">718 B — 모델 아키텍처 설정 (레이어·헤드·vocab 등)</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">⚙️ generation_config.json</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">126 B — 기본 생성 파라미터 (max_new_tokens 등)</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">🧠 model.safetensors</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">4.17 GB — 가중치 파일 (Safetensors 단일 샤드, BF16)</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">🔤 tokenizer.json</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">17.2 MB — BPE 토크나이저 어휘·병합 규칙</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">🔤 tokenizer_config.json</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">51.1 kB — 채팅 템플릿 포함 토크나이저 설정</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.8px solid rgb(226, 232, 240); font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">🔤 special_tokens_map.json</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">444 B — BOS/EOS/PAD 등 특수 토큰 매핑</span></li><li class="file-item" style="padding: 8px 0px; display: flex; align-items: center; justify-content: space-between; border-bottom-width: medium; border-bottom-style: none; border-bottom-color: currentcolor; font-size: 13px;"><span class="file-name" style="font-family: monospace; color: rgb(51, 65, 85);">📁 assets/</span><span class="file-size" style="color: rgb(100, 116, 139); font-size: 12px;">로고·성능 그래프 등 이미지 리소스</span></li></ul><div class="callout info" style="margin: 0.75rem 0px 0px; padding: 0.85rem 1rem; border-radius: 8px; font-size: 13px; line-height: 1.7; background: rgb(239, 246, 255); border-left: 3px solid rgb(96, 165, 250); color: rgb(30, 58, 138); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal;">가중치가&nbsp;<strong>단일 Safetensors 파일</strong>(model.safetensors)로 제공되어 로딩이 간단. 총 저장 용량 약 4.2 GB, GPU VRAM 8 GB 이상 환경에서 운영 가능.</div><div class="content" style="margin: 1rem 0px 0px; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><p style="margin: 0px 0px 0.9rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">파생 모델 현황 (HF 모델 트리)</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">어댑터(Adapters): 10개 모델 공개</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">파인튜닝(Finetunes): 15개 모델 공개</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">양자화(Quantizations): 12개 모델 공개 (GGUF·GPTQ 등)</li></ul></div></div>
+  </div>
+
+  <!-- ========== SECTION 6 ========== -->
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body" contenteditable="true" data-ph="공공기관 행정·민원 응대·내부 문서 분석·질의응답·요약·RAG 검색·챗봇·보고서 초안 작성 등 어떤 업무에 어떻게 활용 가능한지 구체 시나리오로 작성합니다."><p style="margin: 0px 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">① 허위정보·불건전정보 탐지 (본 과제 핵심 업무)</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">웹 크롤링 또는 검색 API를 통해 수집한 텍스트를 모델에 입력, 시스템 프롬프트에 판별 기준을 정의하여 "해당/비해당" 분류 및 근거 출력.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">RAG 버전(<code style="padding: 0px;">kanana-nano-2.1b-rag</code>)과 연계 시 검색 결과를 직접 컨텍스트로 주입하는 파이프라인 구성 가능.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">② 병역면탈 조장정보 판별</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">병무청·법령 기준을 시스템 프롬프트로 입력하고, 게시물·댓글 텍스트의 위법 가능성을 판별하는 자동 1차 스크리닝 활용.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">③ 공문서·보고서 요약 및 초안 생성</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">8,192 토큰 컨텍스트를 활용한 중간 길이 문서 요약, 회의록 정리, 기안 초안 생성.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">④ 민원 분류 및 응답 지원</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">민원 텍스트를 카테고리별로 분류하고 FAQ 기반 1차 답변 초안을 생성하는 챗봇 백엔드로 활용.</li></ul><p style="margin: 0.9rem 0px 0.5rem; padding: 0px; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal; background: none; border: none; border-left: none; border-radius: 0; min-height: unset;"><span style="color: rgb(15, 23, 42); font-weight: 600;">⑤ Function Calling 기반 자동화</span></p><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);">Function Call 전용 버전(<code style="padding: 0px;">kanana-nano-2.1b-function-call</code>) 연계 시 외부 API·DB 조회를 자연어 명령으로 자동화.</li></ul></div>
+  </div>
+
+  <!-- ========== SECTION 7 ========== -->
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body" contenteditable="true" data-ph="성능 한계 · 환각 가능성 · 한국어 지원 수준 · 보안 이슈 · 라이선스 제한 · 상업적 활용 가능 여부 · 평가 데이터 한계 등을 정리합니다."><ul style="margin: 0px 0px 0.9rem; padding: 0px 0px 0px 1.25rem; color: rgb(30, 41, 59); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 15px; letter-spacing: normal;"><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">컨텍스트 길이:</span>&nbsp;기본 8,192 토큰으로, 장문 법령·판례 문서 전체 처리에는 한계가 있음. 긴 문서는 청킹(chunking) 분할 후 처리 필요.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">수학·코딩 성능:</span>&nbsp;GSM8K(수학) 46.32, HumanEval+(코딩) 63.41로 일반 지식·추론 모델 대비 낮음. 수리 계산이 필요한 업무에는 부적합.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">허위정보 최종 판단 불가:</span>&nbsp;AI 출력은 보조 자료로만 활용해야 하며, 법적 효력이 있는 최종 판단은 반드시 담당 공무원이 수행해야 함.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">라이선스 제약:</span>&nbsp;CC-BY-NC-4.0은 상업적 이용 금지. 외부 서비스로 공개하거나 유상 제공 시 라이선스 위반 가능성. 도입 전 법무 검토 필수.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">환각(Hallucination) 위험:</span>&nbsp;모든 생성형 AI와 마찬가지로 사실과 다른 정보를 생성할 수 있음. 출력 결과의 교차 검증 체계 마련 필요.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">Knowledge Cutoff:</span>&nbsp;학습 데이터 기준일 이후의 최신 사건·법령 개정 등은 반영되지 않을 수 있음. RAG 연계로 보완 권장.</li><li style="margin: 0px 0px 0.2rem; font-size: 14px; line-height: 1.8; color: rgb(51, 65, 85);"><span style="color: rgb(15, 23, 42); font-weight: 600;">안전 필터 미포함:</span>&nbsp;별도 안전 메커니즘을 구현하지 않은 경우 부적절한 내용이 생성될 수 있음. 시스템 프롬프트 또는 후처리 필터 적용 필요.</li></ul></div>
+  </div>
+
+  <!-- ========== SECTION 8 ========== -->
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body" style="border-left: none; background: none; border: none; padding: 2mm 0;" contenteditable="true" data-ph="이 모델을 실제 조직 업무에 도입한다면 어떤 조건에서 적합한지, 어떤 추가 검증·POC가 필요한지 본인 의견을 작성합니다.">
+      <p style="margin: 0px 0px 1.2rem; padding: 0px; font-size: 14px; line-height: 1.9; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal;"><code style="padding: 0px;">kanana-nano-2.1b-instruct</code>는 <strong>한국어 처리 성능</strong>과 <strong>경량성</strong>, <strong>국내 기업 개발</strong>이라는 세 가지 요소를 동시에 충족하는 현실적인 공공행정용 SLM이다.</p>
+
+      <p style="margin: 0px 0px 1.2rem; padding: 0px; font-size: 14px; line-height: 1.9; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal;">특히 <strong>허위정보·불건전정보 탐지 업무</strong>에서 강점을 보이는 이유는, 동급 2B대 모델 중 <strong>KMMLU·HAE-RAE 한국어 이해 벤치마크 1위</strong>를 기록하며 한국어 문맥 파악 능력이 검증되었고, <strong>RAG 전용 파생 모델</strong>을 통해 실시간 웹 검색 결과를 컨텍스트로 주입하는 구조를 쉽게 구성할 수 있기 때문이다.</p>
+
+      <p style="margin: 0px 0px 1.2rem; padding: 0px; font-size: 14px; line-height: 1.9; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal;">운영 측면에서는 <strong>단일 Safetensors 파일(4.2 GB)</strong>로 GPU 8 GB 서버에서 <strong>온프레미스 배포</strong>가 가능해 <strong>망분리 환경의 행정기관</strong>에 적합하다. <strong>vLLM·SGLang</strong> 등 고성능 추론 엔진도 공식 지원한다.</p>
+
+      <p style="margin: 0px; padding: 0px; font-size: 14px; line-height: 1.9; color: rgb(51, 65, 85); font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; letter-spacing: normal;">다만 <strong>8K 컨텍스트 한계</strong>와 <strong>CC-BY-NC-4.0 라이선스</strong>는 도입 전 반드시 확인해야 하며, AI 출력은 <strong>담당자의 최종 판단을 보조하는 역할</strong>로 운영 범위를 명확히 해야 한다. 향후 업무 확대나 성능 향상이 필요하면 동일 시리즈의 <code style="padding: 0px;">kanana-1.5-2.1b-instruct-2505</code>(<strong>Apache 2.0</strong>, <strong>128K 컨텍스트</strong>)로 마이그레이션하는 경로도 열려 있어 장기적 확장성이 양호하다.</p>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 9 ========== -->
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list" id="refList">
+      <li contenteditable="true" data-ph="Hugging Face 모델 페이지: https://huggingface.co/...">
+        <a href="https://huggingface.co/kakaocorp/kanana-nano-2.1b-instruct" target="_blank" style="color: rgb(37, 99, 235); text-decoration: underline; font-size: 13px; font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-weight: 500;">🤗 Hugging Face 모델 카드 — kakaocorp/kanana-nano-2.1b-instruct</a>
+        <div style="font-size: 11px; color: rgb(100, 116, 139); margin-top: 2px;">https://huggingface.co/kakaocorp/kanana-nano-2.1b-instruct</div>
+      </li>
+      <li contenteditable="true" data-ph="모델 논문 또는 기술 블로그: https://...">
+        <a href="https://arxiv.org/abs/2502.18934" target="_blank" style="color: rgb(37, 99, 235); text-decoration: underline; font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 13px; font-weight: 500;">📄 Technical Report — Kanana: Compute-efficient Bilingual Language Models (arXiv:2502.18934)</a>
+        <div style="font-size: 11px; color: rgb(100, 116, 139); margin-top: 2px;">https://arxiv.org/abs/2502.18934</div>
+      </li>
+      <li contenteditable="true" data-ph="GitHub 저장소: https://github.com/...">
+        <a href="https://huggingface.co/collections/kakaocorp/kanana-nano-21b-67a326cda1c449c8d4172259" target="_blank" style="color: rgb(37, 99, 235); text-decoration: underline; font-family: Pretendard, &quot;Noto Sans KR&quot;, &quot;Apple SD Gothic Neo&quot;, sans-serif; font-size: 13px; font-weight: 500;">📦 Hugging Face Collection — Kanana Nano 2.1B (Base·Instruct·Embedding·Function Call·RAG)</a>
+        <div style="font-size: 11px; color: rgb(100, 116, 139); margin-top: 2px;">https://huggingface.co/collections/kakaocorp/kanana-nano-21b-67a326cda1c449c8d4172259</div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ========== SUBMISSION ========== -->
+  <div class="callout">
+    <div class="label">Submission · 제출 정보</div>
+    <p><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong> <span contenteditable="true" data-ph="https://github.com/본인아이디/slm-model-report-소속-이름"><a href="https://github.com/kjy-arch/slm-model-report-mma-kimjaeyeon.git" target="_blank" style="color: rgb(37, 99, 235); text-decoration: underline; font-size: 12pt; font-family: Pretendard, Arial, sans-serif; font-weight: 500;">https://github.com/kjy-arch/slm-model-report-mma-kimjaeyeon.git</a></span></p>
+    <p><strong style="color:var(--ink);font-weight:700">파일명 예시:</strong> 행안부_김민수_slm_report.html</p>
+    <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">최종 제출 시 EDIT 버튼을 눌러 모든 항목을 채운 뒤, [HTML 저장] 버튼으로 파일을 다운로드해 GitHub Repository에 업로드하세요. 또는 EDIT하지 않고 동일한 양식 그대로 생성형 AI(Claude·ChatGPT 등)에 첨부해 채움을 요청해도 무방합니다.</p>
+  </div>
+
+</section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT -->
+<!-- ============================================================ -->
+<script>
+let editMode = false;
+
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){
+    btn.classList.add('active');
+    btn.textContent = '✎ EDITING';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '✎ EDIT';
+  }
+}
+
+// HTML 저장 — 현재 DOM 상태 그대로 다운로드
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault(); saveHtml();
+  } else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){
+      document.activeElement.blur();
+    } else {
+      toggleEdit();
+    }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){
+      toggleEdit();
+    }
+  }
+});
+</script>
+
+
+
+<chatgpt-sidebar data-rendered="true" data-gpts-theme="light"></chatgpt-sidebar><div id="__toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgb(15, 23, 42); color: rgb(255, 255, 255); padding: 12px 24px; border-radius: 24px; font: 700 11px Pretendard, sans-serif; letter-spacing: 0.6px; box-shadow: rgba(15, 23, 42, 0.4) 0px 8px 28px; z-index: 400; border: 1px solid rgb(37, 99, 235); opacity: 0; transition: 0.3s;">✓ 병무청_김재연_slm_report.html 다운로드 완료</div></body></html>

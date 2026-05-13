@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+/* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+.sec .body[contenteditable=true]:empty::before,
+.sec p[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+.kv-table td.v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- TOOLBAR -->
+<!-- ============================================================ -->
+<div class="tb">
+  <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+  <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+  <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+
+<div class="stack">
+
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+    </div>
+
+    <div class="cv-center">
+      <div class="cv-year">Day 1 · Assignment 01</div>
+      <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+      <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+    </div>
+
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Track</div><div class="m-v">SLM Research</div></div>
+        <div class="m"><div class="m-l">Format</div><div class="m-v">HTML Report</div></div>
+        <div class="m"><div class="m-l">Submission</div><div class="m-v">GitHub Public Repo</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      AI 전문인재 과정
+      <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+    </div>
+    <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BODY PAGE -->
+<!-- ============================================================ -->
+<section class="sheet">
+
+  <!-- ========== STUDENT IDENTITY ========== -->
+  <div class="id-block">
+    <div class="lbl">Student Identity · 수강생 정보</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">수강생 소속</span>
+        <span class="v" contenteditable="true" data-ph="예: 행정안전부">한국국제협력단(KOICA)</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">수강생 이름</span>
+        <span class="v" contenteditable="true" data-ph="예: 홍길동">김우영</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">선택 모델명</span>
+        <span class="v" contenteditable="true" data-ph="예: Qwen2.5-3B-Instruct">Qwen2.5-3B-Instruct</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v" contenteditable="true" data-ph="https://huggingface.co/...">https://huggingface.co/Qwen/Qwen2.5-3B-Instruct</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 1 ========== -->
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body" contenteditable="true" data-ph="이 모델을 선택한 이유를 작성합니다. 특정 산업, 공공 업무, 행정, 문서처리, 질의응답 등 어떤 관점에서 적합하다고 판단했는지 설명합니다.">한국국제협력단(KOICA)은 70여 개 협력국에서 무상원조 사업을 수행하는 국제개발협력 전문기관으로, 영어·한국어를 비롯해 베트남어·캄보디아어·라오어·아랍어·스페인어 등 다양한 협력국 언어가 일상 업무에서 사용된다. Qwen2.5-3B-Instruct는 단일 모델에서 29개 이상의 언어를 지원하면서도 3B 규모로 온프레미스(개인 PC·소형 GPU 서버) 환경에서 무리 없이 구동 가능하며, 32K 토큰의 충분한 컨텍스트 길이를 제공해 사업 보고서 요약·다국어 회의록 정리·협력국 정책 문서 질의응답 등 KOICA의 다국적 행정 환경에 폭넓게 활용할 수 있다고 판단하여 선택했다. 또한 Qwen2.5 시리즈는 동일 규모 대비 한국어·영어 벤치마크에서 경쟁 모델(Llama-3.2-3B, Gemma-2-2B 등) 대비 우수한 성능을 보고하고 있어 PoC 후보로 적합하다.</div>
+  </div>
+
+  <!-- ========== SECTION 2 ========== -->
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">모델명</td><td class="v" contenteditable="true" data-ph="모델 카드 상단의 정식 명칭을 입력하세요.">Qwen2.5-3B-Instruct</td></tr>
+      <tr><td class="k">개발 주체</td><td class="v" contenteditable="true" data-ph="개발 회사·기관·연구팀·개인 개발자 등">Alibaba Cloud · Qwen Team</td></tr>
+      <tr><td class="k">모델 규모</td><td class="v" contenteditable="true" data-ph="예: 1.5B / 3B / 7B">총 3.09B 파라미터 (Non-embedding 2.77B)</td></tr>
+      <tr><td class="k">라이선스</td><td class="v" contenteditable="true" data-ph="예: Apache-2.0 / MIT / Llama 3 Community / 기타">Qwen RESEARCH LICENSE AGREEMENT (비상업 목적에 한정, 상업적 활용 시 Alibaba Cloud로부터 별도 라이선스 취득 필요)</td></tr>
+      <tr><td class="k">모델 유형</td><td class="v" contenteditable="true" data-ph="Base / Instruct / Chat / Domain-specific 등">Instruct (Instruction-tuned · Chat 형식 대응)</td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 3 ========== -->
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body" contenteditable="true" data-ph="모델이 어떤 데이터로 사전학습되었는지, 공개 데이터인지, 특정 산업·언어·도메인 데이터가 포함되었는지, Instruction Tuning · SFT · RLHF · DPO · LoRA · QLoRA 등 어떤 튜닝이 적용되었는지 정리합니다. 모델 카드에 명확히 공개되어 있지 않다면 '공개 범위 내에서는 확인 어려움'이라고 작성합니다.">[사전학습] Qwen2.5 기술 보고서(arXiv:2412.15115)에 따르면 Qwen2.5 시리즈는 이전 세대 대비 7조 토큰에서 18조(18T) 토큰으로 확장된 고품질 다국어 코퍼스로 사전학습되었다. 코딩·수학 영역은 별도의 도메인 전문 모델을 활용해 데이터 품질을 강화했다고 보고된다. 다만 정확한 데이터 출처·라이선스·필터링 절차는 모델 카드에 모두 공개되어 있지는 않다. [후처리] Instruct 모델은 사전학습 모델 위에 100만 건 이상의 샘플을 활용한 정교한 SFT(Supervised Fine-Tuning)와 다단계 강화학습(multistage reinforcement learning)을 적용해 명령 수행, 8K 이상 장문 생성, JSON 등 구조화된 출력 능력을 강화했다(기술 보고서 초록 표현). 다만 3B-Instruct 변종에 RLHF·DPO·GRPO 등 세부 단계가 어느 수준까지 적용되었는지는 공개 범위 내에서 명시적으로 확인되지 않는다. [언어] 다국어 학습으로 한국어·영어·중국어·일본어·베트남어·아랍어·스페인어 등 29개 이상의 언어를 직접 지원한다.</div>
+  </div>
+
+  <!-- ========== SECTION 4 ========== -->
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">Architecture</td><td class="v" contenteditable="true" data-ph="예: Llama / Qwen2 / Mistral / Phi 등">Qwen2 (Transformer + RoPE + SwiGLU + RMSNorm + GQA + tied word embeddings, bfloat16)</td></tr>
+      <tr><td class="k">Context Length</td><td class="v" contenteditable="true" data-ph="예: 4096 / 8192 / 32768 / 128000 토큰">32,768 토큰 (생성 길이는 권장 8,192 토큰)</td></tr>
+      <tr><td class="k">Hidden Size</td><td class="v" contenteditable="true" data-ph="config.json의 hidden_size 값">2,048 (intermediate_size 11,008)</td></tr>
+      <tr><td class="k">Layers</td><td class="v" contenteditable="true" data-ph="num_hidden_layers 값">36</td></tr>
+      <tr><td class="k">Attention Heads</td><td class="v" contenteditable="true" data-ph="num_attention_heads · num_key_value_heads">Q 헤드 16 / KV 헤드 2 (Grouped Query Attention, KV 캐시 절감)</td></tr>
+      <tr><td class="k">Tokenizer</td><td class="v" contenteditable="true" data-ph="BPE / SentencePiece / Tiktoken 등 + vocab size">BPE 기반 Qwen Tokenizer · vocab size 151,936 (다국어·코드 혼합 토큰화 최적화)</td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 5 ========== -->
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body" contenteditable="true" data-ph="Hugging Face 저장소에 있는 config.json · tokenizer.json · model.safetensors · generation_config.json · special_tokens_map.json 등 주요 파일이 어떤 역할을 하는지 정리합니다.">• config.json — 모델 아키텍처와 하이퍼파라미터(hidden_size 2048, num_hidden_layers 36, num_attention_heads 16, num_key_value_heads 2, vocab_size 151,936, max_position_embeddings 32,768 등)를 정의. transformers 라이브러리가 모델을 로드할 때 가장 먼저 참조하는 파일이다. • model.safetensors — 모델 가중치 본체. bfloat16 정밀도, Safetensors 포맷이라 pickle 기반 .bin 대비 보안성과 로딩 속도가 우수하다. 3B 모델 기준 약 6GB. • tokenizer.json / tokenizer_config.json / vocab.json / merges.txt — Qwen BPE 토크나이저 정의. 다국어·코드 혼합 처리를 위한 어휘와 병합 규칙이 담겨 있다. • generation_config.json — 추론 시 기본 생성 파라미터(temperature, top_p, top_k, repetition_penalty, max_new_tokens 등) 디폴트 값. • special_tokens_map.json / added_tokens.json — &lt;|im_start|&gt;, &lt;|im_end|&gt; 등 채팅 포맷 제어용 특수 토큰 매핑. apply_chat_template 함수가 이 정보를 기반으로 시스템·사용자·어시스턴트 턴을 구분한다. • LICENSE / README.md — 라이선스 본문과 모델 카드(사용법·벤치마크·제한사항 등).</div>
+  </div>
+
+  <!-- ========== SECTION 6 ========== -->
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body" contenteditable="true" data-ph="공공기관 행정·민원 응대·내부 문서 분석·질의응답·요약·RAG 검색·챗봇·보고서 초안 작성 등 어떤 업무에 어떻게 활용 가능한지 구체 시나리오로 작성합니다.">KOICA 업무 환경에서 검토 가능한 활용 시나리오는 다음과 같다. ① 다국어 사업 보고서 요약 — 협력국 사무소가 제출한 영문·현지어 분기보고서·결과보고서를 한국어로 자동 요약하여 본부 사업부서가 빠르게 핵심을 파악. ② 다국적 회의록 정리 — Zoom·Teams 화상회의의 STT 전사 결과를 입력받아 결정사항·후속조치(Action Item)·담당자별 To-Do로 구조화된 회의록 자동 생성. ③ 사내 RAG 챗봇 — KOICA 사업관리 매뉴얼·OECD DAC 가이드라인·국별 협력전략(CPS) 문서를 벡터 DB로 인덱싱한 뒤, 신규 직원·PMC가 자연어로 질의응답. ④ 사업 기획 초안 작성 — 사업 발굴 단계에서 PCP(Project Concept Paper)·사업기획서 초안을 협력국 배경 정보 기반으로 1차 작성 보조. ⑤ 다국어 커뮤니케이션 — 협력국 카운터파트(영문·스페인어·아랍어 등)와의 이메일·공문 초안을 한국어 키포인트만 입력하면 자동 작성. ⑥ 평가보고서 일관성 점검 — 사후평가 보고서의 OECD DAC 5대 평가기준(적절성·효율성·효과성·영향력·지속가능성) 누락 여부 자동 점검. 모든 시나리오는 내부 직원 보조 도구(Copilot 형태)로 우선 적용하는 것이 안전하다.</div>
+  </div>
+
+  <!-- ========== SECTION 7 ========== -->
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body" contenteditable="true" data-ph="성능 한계 · 환각 가능성 · 한국어 지원 수준 · 보안 이슈 · 라이선스 제한 · 상업적 활용 가능 여부 · 평가 데이터 한계 등을 정리합니다.">① 라이선스 제한 — Qwen2.5-3B는 Apache-2.0이 아닌 Qwen Research License로, 연구 목적은 자유로우나 외부 서비스·상업적 활용 시 별도 약관 검토와 Alibaba 측 동의가 필요할 수 있다. 정부·공공기관 도입 시 법무·계약 단계에서 라이선스 적합성 사전 검토가 필수다. (참고: 동일 시리즈의 0.5B/1.5B/7B/14B/32B 모델은 Apache-2.0이라 라이선스 부담이 더 적다.) ② 한국어 표현력 한계 — 다국어 모델 특성상 한국어 전용 모델(EXAONE-3.5-2.4B, Polyglot-Ko, KULLM 등) 대비 공문서 어투·존댓말·고유명사·법령 용어에서 미세한 부자연스러움이 나타날 수 있다. ③ 환각(Hallucination) — 3B 규모의 한계로 통계 수치·법령 조항·인명·사업명 등 사실관계가 중요한 항목에서 오류 가능성이 높다. 반드시 RAG(Retrieval-Augmented Generation) 또는 사람의 검증 절차와 병행해야 한다. ④ 보안·개인정보 — 협력국 사업 관련 문서에는 수원국 정부·수혜자 개인정보, 미공개 사업비 정보가 포함될 수 있어 외부 클라우드 추론 API 사용은 부적절하다. 온프레미스 또는 폐쇄망 GPU 환경 운영을 권장한다. ⑤ 컨텍스트 품질 저하 — 32K 토큰을 지원하지만 후반부로 갈수록 정보 활용도가 떨어지는 'lost in the middle' 현상이 보고되어, 매우 긴 문서는 청크 분할·요약 단계 도입이 필요하다. ⑥ 평가 데이터 편향 — 공개 벤치마크 점수가 실제 KOICA 업무 도메인(국제개발협력 전문 용어)과 일치하지 않을 수 있어, 자체 도메인 평가셋 구축이 별도로 요구된다.</div>
+  </div>
+
+  <!-- ========== SECTION 8 ========== -->
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body" contenteditable="true" data-ph="이 모델을 실제 조직 업무에 도입한다면 어떤 조건에서 적합한지, 어떤 추가 검증·POC가 필요한지 본인 의견을 작성합니다.">Qwen2.5-3B-Instruct는 KOICA의 다국어 환경과 온프레미스 운용 제약을 동시에 고려할 때 PoC 단계에서 우선 검토할 만한 후보이며, 특히 다국어 요약·번역·내부 RAG 챗봇 영역에서 강점이 기대된다. 다만 본격 도입 전 다음 4가지가 선행되어야 한다고 판단한다. (1) Qwen Research License의 공공기관 적용 가능성에 대한 법무 검토, 또는 대안으로 Apache-2.0 라이선스인 Qwen2.5-7B/1.5B·EXAONE-3.5-2.4B·Llama-3.2-3B 등과의 라이선스·성능 비교. (2) KOICA 도메인 평가셋 구축 — 실제 사업 보고서·CPS·평가보고서 100건 내외로 요약·QA·번역 정량 평가셋을 만들고, BLEU/ROUGE/한국어 LLM-as-a-Judge 점수를 측정. (3) 협력국 주요 언어(베트남·캄보디아·라오·아랍·스페인) 별도 정성 평가 — 단순 영-한 외에 동남아·중동·중남미 언어 품질 확인이 KOICA 업무에서 결정적이다. (4) 한국어 전용 SLM과의 A/B 비교 PoC — 같은 프롬프트·평가셋으로 EXAONE-3.5-2.4B-Instruct 등과 직접 비교하여 다국어 vs 한국어 특화의 트레이드오프를 정량화. 결론적으로 대외 공개 서비스보다는 내부 직원 Copilot(요약·번역·문서 검색)부터 단계적으로 적용하는 것이 안전하며, 약 1~2개월의 PoC 후 본격 도입 여부를 결정하는 로드맵을 제안한다.</div>
+  </div>
+
+  <!-- ========== SECTION 9 ========== -->
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list" id="refList">
+      <li contenteditable="true" data-ph="Hugging Face 모델 페이지: https://huggingface.co/...">Hugging Face 모델 페이지: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct</li>
+      <li contenteditable="true" data-ph="모델 논문 또는 기술 블로그: https://...">Qwen2.5 기술 블로그: https://qwenlm.github.io/blog/qwen2.5/</li>
+      <li contenteditable="true" data-ph="GitHub 저장소: https://github.com/...">GitHub 저장소: https://github.com/QwenLM/Qwen2.5</li>
+      <li contenteditable="true" data-ph="기술 보고서: https://...">Qwen2.5 Technical Report (arXiv): https://arxiv.org/abs/2412.15115</li>
+      <li contenteditable="true" data-ph="라이선스 본문: https://...">Qwen Research License: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct/blob/main/LICENSE</li>
+    </ul>
+  </div>
+
+  <!-- ========== SUBMISSION ========== -->
+  <div class="callout">
+    <div class="label">Submission · 제출 정보</div>
+    <p><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong> <span contenteditable="true" data-ph="https://github.com/본인아이디/slm-model-report-소속-이름">https://github.com/amnotyoung/slm-model-report-koica-kim-wooyoung</span></p>
+    <p><strong style="color:var(--ink);font-weight:700">파일명:</strong> 한국국제협력단_김우영_slm_report.html</p>
+    <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">최종 제출 시 EDIT 버튼을 눌러 모든 항목을 채운 뒤, [HTML 저장] 버튼으로 파일을 다운로드해 GitHub Repository에 업로드하세요. 또는 EDIT하지 않고 동일한 양식 그대로 생성형 AI(Claude·ChatGPT 등)에 첨부해 채움을 요청해도 무방합니다.</p>
+  </div>
+
+</section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT -->
+<!-- ============================================================ -->
+<script>
+let editMode = false;
+
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){
+    btn.classList.add('active');
+    btn.textContent = '✎ EDITING';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '✎ EDIT';
+  }
+}
+
+// HTML 저장 — 현재 DOM 상태 그대로 다운로드
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault(); saveHtml();
+  } else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){
+      document.activeElement.blur();
+    } else {
+      toggleEdit();
+    }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){
+      toggleEdit();
+    }
+  }
+});
+</script>
+
+
+
+</body></html>
