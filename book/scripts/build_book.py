@@ -13,10 +13,12 @@ from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 MANIFEST = ROOT / "data" / "manifest.json"
 FOREWORD_MD = ROOT / "data" / "foreword.md"
 REPORTS = ROOT / "reports"
-DIST = ROOT / "dist"
+# Output to /docs at repo root so GitHub Pages "Deploy from a branch" can serve it directly.
+DIST = REPO_ROOT / "docs"
 CHAPTERS = DIST / "chapters"
 
 
