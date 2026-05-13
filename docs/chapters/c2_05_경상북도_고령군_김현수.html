@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{display:block;color:var(--accent-2);font-weight:700;font-size:9pt;margin-bottom:3mm}
+.cv-center .cv-year{
+  font-family:var(--sans);font-weight:500;font-size:18pt;
+  color:var(--accent-2);margin-bottom:5mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-title{
+  font-family:var(--sans);font-weight:800;font-size:38pt;
+  color:#fff;line-height:1.15;letter-spacing:-1.6pt;margin:0 0 6mm;
+}
+.cv-center .cv-rule{width:48mm;height:1.2mm;background:var(--accent);margin:6mm 0}
+.cv-center .cv-doctype{
+  font-family:var(--sans);font-weight:600;font-size:18pt;
+  color:#CBD5E1;margin-bottom:4mm;letter-spacing:-.3pt;
+}
+.cv-center .cv-sub{
+  font-family:var(--sans);font-weight:400;font-size:11.5pt;
+  color:#CBD5E1;line-height:1.7;max-width:135mm;
+}
+.cv-bottom .cv-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:7mm;gap:8mm;
+}
+.cv-meta .m-l{font:700 7.5pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;color:var(--accent-2);margin-bottom:3mm}
+.cv-meta .m-v{font-family:var(--sans);font-size:11.5pt;font-weight:600;color:#fff;letter-spacing:-.2pt}
+.cv-foot{
+  background:#fff;color:var(--ink);padding:10mm 22mm 12mm;
+  display:flex;justify-content:space-between;align-items:center;position:relative;
+}
+.cv-foot::before{content:"";position:absolute;top:0;left:0;right:0;height:.6mm;background:var(--accent)}
+.cv-foot-l{font-family:var(--sans);font-weight:700;font-size:13pt;color:var(--ink);letter-spacing:-.2pt}
+.cv-foot-l .sub{display:block;font-size:8.5pt;font-weight:600;color:var(--ink-mute);letter-spacing:1.5pt;text-transform:uppercase;margin-top:2mm;font-family:var(--mono)}
+.cv-foot-r{
+  text-align:right;font:600 7.5pt/1.7 var(--mono);
+  letter-spacing:1.6pt;color:var(--ink-mute);text-transform:uppercase;max-width:80mm;
+}
+
+/* ========== STUDENT INFO BLOCK ========== */
+.id-block{
+  background:linear-gradient(135deg,var(--accent-soft) 0%,var(--paper) 100%);
+  border:1px solid var(--accent-border);border-radius:5px;
+  padding:7mm 8mm;margin:0 0 9mm;
+}
+.id-block .lbl{
+  font:700 8pt/1 var(--mono);letter-spacing:2.2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.id-block .lbl::before{content:"●";font-size:7pt;color:var(--accent)}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:2mm}
+.id-cell .k{font:700 7.5pt/1 var(--mono);letter-spacing:1.5pt;color:var(--ink-mute);text-transform:uppercase}
+.id-cell .v{
+  font-family:var(--sans);font-weight:600;font-size:14pt;color:var(--ink);
+  border-bottom:1px solid var(--accent-border);padding:2mm 0 2.5mm;letter-spacing:-.3pt;
+  min-height:10mm;line-height:1.5;
+}
+.id-cell .v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-style:normal;font-weight:400;
+}
+
+/* ========== SECTION ========== */
+.sec{margin:9mm 0 6mm;page-break-inside:avoid}
+.sec h2{
+  font-family:var(--sans);font-weight:700;font-size:14pt;color:var(--ink);
+  letter-spacing:-.3px;padding:0 0 3mm;
+  margin-bottom:4mm;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:5mm;
+}
+.sec h2::before{
+  content:"";display:inline-block;width:3.5pt;height:18pt;
+  background:var(--accent);border-radius:2pt;
+}
+.sec h2 .num{
+  font:700 8.5pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);padding:3pt 8pt;border-radius:4pt;
+  min-width:10mm;text-align:center;
+}
+/* 본문 답변 영역 — 흰 카드 + 명확한 테두리 */
+.sec p,.sec .body{
+  font-size:12pt;line-height:1.95;color:var(--ink);
+  font-weight:400;letter-spacing:-.05pt;
+  margin:3mm 0;text-align:left;min-height:18mm;
+  padding:5mm 6mm;background:var(--surface);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0;
+}
+.sec .body[contenteditable=true]:empty::before,
+.sec p[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== TABLES ========== */
+.kv-table{
+  width:100%;border-collapse:collapse;margin:4mm 0 5mm;
+  background:var(--paper);border:1px solid var(--border);border-radius:5px;overflow:hidden;
+}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table td{padding:4mm 6mm;font-size:11.5pt;line-height:1.75;vertical-align:top}
+.kv-table td.k{
+  font-family:var(--sans);font-weight:700;color:var(--ink);
+  width:48mm;background:var(--surface);
+  letter-spacing:-.1pt;font-size:11pt;
+  border-right:1px solid var(--border);
+}
+.kv-table td.v{color:var(--ink);min-height:8mm;font-weight:400}
+.kv-table td.v[contenteditable=true]:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);
+  border-left:4px solid var(--accent);
+  padding:6mm 8mm;margin:6mm 0;page-break-inside:avoid;border-radius:5px;
+}
+.callout .label{
+  font:700 8pt/1 var(--mono);letter-spacing:2pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+<script id="book-embed-detect">
+  if (window.self !== window.top) { document.documentElement.classList.add('book-embedded'); }
+</script>
+<style id="book-embed-overrides">
+  /* Applied only when this report is loaded inside the book viewer iframe.
+     Keep the original A4-ish design but hide the report's fixed toolbar
+     (parent viewer already provides navigation/controls). */
+  html.book-embedded .tb { display: none !important; }
+  html.book-embedded body { padding-top: 0 !important; }
+  html.book-embedded .stack { padding: 24px 0 60px !important; }
+</style>
+</head>
+<body class="" id="artifacts-component-root-html">
+
+<!-- ============================================================ -->
+<!-- TOOLBAR -->
+<!-- ============================================================ -->
+<div class="tb">
+  <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+  <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+  <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+
+<div class="stack">
+
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+    </div>
+
+    <div class="cv-center">
+      <div class="cv-year">Day 1 · Assignment 01</div>
+      <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+      <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+    </div>
+
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Track</div><div class="m-v">SLM Research</div></div>
+        <div class="m"><div class="m-l">Format</div><div class="m-v">HTML Report</div></div>
+        <div class="m"><div class="m-l">Submission</div><div class="m-v">GitHub Public Repo</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      AI 전문인재 과정
+      <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+    </div>
+    <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BODY PAGE -->
+<!-- ============================================================ -->
+<section class="sheet">
+
+  <!-- ========== STUDENT IDENTITY ========== -->
+  <div class="id-block">
+    <div class="lbl">Student Identity · 수강생 정보</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">수강생 소속</span>
+        <span class="v" contenteditable="true" data-ph="예: 행정안전부">경상북도 고령군청</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">수강생 이름</span>
+        <span class="v" contenteditable="true" data-ph="예: 홍길동">김현수</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">선택 모델명</span>
+        <span class="v" contenteditable="true" data-ph="예: Qwen2.5-3B-Instruct">Gemma-4-E2B-it</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v" contenteditable="true" data-ph="https://huggingface.co/...">https://huggingface.co/google/gemma-4-E2B-it</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 1 ========== -->
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body" contenteditable="true" data-ph="이 모델을 선택한 이유를 작성합니다. 특정 산업, 공공 업무, 행정, 문서처리, 질의응답 등 어떤 관점에서 적합하다고 판단했는지 설명합니다.">본인은 현재 「AI 지방세 지식인」(olta.re.kr 공개자료를 기반으로 지방세 담당 공무원의 법령·유권해석 질의에 즉시 응답하는 RAG 기반 Q&amp;A 시스템) Phase 3 단계에서 폐쇄망 LLM 전환을 준비 중이며, 본 보고서는 그 후보 SLM 1차 스크리닝 결과이다. <strong>Gemma-4-E2B-it</strong>를 선정한 사유는 다음 다섯 가지이다.<br><br>
+첫째, <strong>규모 적합성</strong> — Effective 2B(임베딩 포함 5.1B)라는 경량 구조는 1B~7B 검토 기준 내에 정확히 위치하며, 고령군과 같은 기초지자체가 자체 GPU 서버를 갖추기 어려운 현실에서 단일 GPU(예: NVIDIA L4, A10) 또는 고성능 워크스테이션급 자원으로도 추론이 가능하다.<br><br>
+둘째, <strong>Apache-2.0 라이선스</strong> — 공공기관에서 가장 우려하는 라이선스 분쟁 위험이 사실상 없는 허용형 오픈소스 라이선스이며, 상업적·내부 행정용 활용에 제약이 없다. Llama 3 Community License 계열의 사용자 수 임계 조항도 적용되지 않는다.<br><br>
+셋째, <strong>128K 장문 컨텍스트</strong> — 지방세법·지방세특례제한법·시행령·시행규칙·유권해석을 한 번에 컨텍스트로 주입할 수 있는 수준이며, 조문 단위 청킹을 통해 RAG로 압축된 근거 문서(Top-k 10~20개)를 충분히 수용한다.<br><br>
+넷째, <strong>Native Function Calling 지원</strong> — 「AI 지방세 지식인」이 단순 RAG에서 MCP(Model Context Protocol) 구조로 진화할 때 Tool Use 안정성이 결정적이며, Gemma 4는 이를 사전학습 단계에서 네이티브 지원한다.<br><br>
+다섯째, <strong>Thinking Mode와 Instruction-Tuned 변형</strong> — `&lt;|think|&gt;` 토큰 기반 사고 모드를 통해 복잡한 세법 적용(예: 공유지분 상속 취득세 산정) 시 단계별 추론을 수행할 수 있으며, `-it` 접미사가 붙은 instruction-tuned 모델로서 별도 SFT 없이 즉시 한국어 질의응답에 활용 가능하다.</div>
+  </div>
+
+  <!-- ========== SECTION 2 ========== -->
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">모델명</td><td class="v" contenteditable="true" data-ph="모델 카드 상단의 정식 명칭을 입력하세요.">Gemma 4 E2B Instruction-Tuned (google/gemma-4-E2B-it)</td></tr>
+      <tr><td class="k">개발 주체</td><td class="v" contenteditable="true" data-ph="개발 회사·기관·연구팀·개인 개발자 등">Google DeepMind (Gemma 4 패밀리, Gemini 3 연구 기반)</td></tr>
+      <tr><td class="k">모델 규모</td><td class="v" contenteditable="true" data-ph="예: 1.5B / 3B / 7B">Effective 2.3B(추론 활성 파라미터) · 임베딩 포함 5.1B(safetensors 5B 표기) — Per-Layer Embeddings(PLE) 적용</td></tr>
+      <tr><td class="k">라이선스</td><td class="v" contenteditable="true" data-ph="예: Apache-2.0 / MIT / Llama 3 Community / 기타">Apache-2.0 (Gemma 4 License)</td></tr>
+      <tr><td class="k">모델 유형</td><td class="v" contenteditable="true" data-ph="Base / Instruct / Chat / Domain-specific 등">Instruction-Tuned · Multimodal(Any-to-Any: 텍스트·이미지·오디오 입력 / 텍스트 출력) · Reasoning Mode 내장</td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 3 ========== -->
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body" contenteditable="true" data-ph="모델이 어떤 데이터로 사전학습되었는지, 공개 데이터인지, 특정 산업·언어·도메인 데이터가 포함되었는지, Instruction Tuning · SFT · RLHF · DPO · LoRA · QLoRA 등 어떤 튜닝이 적용되었는지 정리합니다. 모델 카드에 명확히 공개되어 있지 않다면 '공개 범위 내에서는 확인 어려움'이라고 작성합니다."><strong>1. 사전학습(Pre-training) 데이터</strong><br>
+모델 카드에서 공개한 학습 데이터 구성은 ① <strong>Web Documents</strong>(140개 이상 언어를 포함한 광범위 웹 텍스트), ② <strong>Code</strong>(다국어 프로그래밍 코드), ③ <strong>Mathematics</strong>(수학·논리 추론 텍스트), ④ <strong>Images</strong>(다양한 시각 데이터)이며, <strong>지식 컷오프(Cutoff)는 2025년 1월</strong>이다. 이는 2025년 개정 지방세법(부동산·차량 취득세 관련 일부 조문)이 부분적으로만 반영되었을 수 있음을 의미하며, RAG 파이프라인에서 시행일자 메타데이터 필터링이 반드시 필요한 근거가 된다. 다국어 사전학습은 35개 이상 언어에 즉시 활용 가능하나 한국어 비중은 별도 공개되지 않아 <em>공개 범위 내에서는 정량 확인이 어렵다</em>.<br><br>
+<strong>2. 데이터 전처리</strong><br>
+CSAM(아동 성착취물) 다단계 필터링, 자동화된 개인정보·민감정보 필터링, 콘텐츠 품질·안전성 기반 추가 필터링이 적용되었다. 공공기관 도입 관점에서 학습 데이터 안전성에 대한 1차 검증은 충분히 수행된 것으로 판단된다.<br><br>
+<strong>3. 사후학습(Post-training)·튜닝 방식</strong><br>
+`-it` 변형은 <strong>Instruction-Tuning</strong>이 완료된 버전으로, Google이 발표한 별도 블로그·기술 문서에 의하면 SFT(Supervised Fine-Tuning)와 안전성 강화를 위한 인간 평가 기반 튜닝이 결합된 형태이다. 다만 <strong>RLHF·DPO·LoRA의 구체 적용 여부와 비율은 모델 카드에 명시적으로 공개되지 않는다</strong>(Google의 일반 정책상 사후학습 세부 절차는 비공개). 안전성 평가에서 Gemma 3 대비 거의 모든 안전 카테고리에서 의미 있는 개선을 보였다고 자체 보고하고 있으며, 별도 안전 필터 미적용 상태에서도 정책 위반율이 낮다고 평가된다.<br><br>
+<strong>4. 한국어·법률 도메인 특화 여부</strong><br>
+한국어 법령·행정 도메인 특화 학습은 <strong>적용되지 않았다</strong>. 따라서 본 모델을 「AI 지방세 지식인」 폐쇄망 환경에 적용하려면 (1) 지방세 법령·유권해석 코퍼스를 활용한 LoRA/QLoRA 기반 도메인 적응(Domain Adaptation), 또는 (2) 강력한 RAG 파이프라인으로 외부 지식을 주입하는 방식이 필요하다. 본 시스템에서는 RAG 우선, 필요 시 LoRA 추가 적용 전략이 합리적이다.</div>
+  </div>
+
+  <!-- ========== SECTION 4 ========== -->
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody><tr><td class="k">Architecture</td><td class="v" contenteditable="true" data-ph="예: Llama / Qwen2 / Mistral / Phi 등"><strong>Gemma4ForConditionalGeneration</strong> (model_type: <code>gemma4</code>) — 텍스트 디코더 + 비전 인코더(<code>gemma4_vision</code>) + 오디오 인코더(<code>gemma4_audio</code>) 결합 멀티모달. 텍스트는 Decoder-only Transformer, Hybrid Attention(슬라이딩 4 + 글로벌 1 반복, 35 레이어 중 7개가 full_attention), <strong>극단적 GQA(8 Q-heads → 1 KV-head, 8:1 비율)</strong>, Per-Layer Embeddings(PLE), Proportional RoPE(글로벌, partial_rotary_factor=0.25, theta=1e6) + 표준 RoPE(슬라이딩, theta=1e4), <code>use_double_wide_mlp=true</code>, <code>tie_word_embeddings=true</code>(입출력 임베딩 공유), <code>final_logit_softcapping=30.0</code></td></tr>
+      <tr><td class="k">Context Length</td><td class="v" contenteditable="true" data-ph="예: 4096 / 8192 / 32768 / 128000 토큰"><code>max_position_embeddings=131072</code> (=128K 토큰) · <code>sliding_window=512</code> · 35개 레이어 중 7개(레이어 4·9·14·19·24·29·34)가 글로벌 어텐션, 나머지 28개는 512 토큰 슬라이딩 윈도우 → <strong>5중 1(슬라이딩 4 + 글로벌 1) 패턴 반복</strong>. 마지막 레이어는 항상 글로벌</td></tr>
+      <tr><td class="k">Hidden Size</td><td class="v" contenteditable="true" data-ph="config.json의 hidden_size 값"><strong>텍스트 디코더 hidden_size = 1536</strong> · intermediate_size = 6144(FFN, double_wide_mlp) · <strong>hidden_size_per_layer_input = 256</strong>(PLE 차원) · vocab_size_per_layer_input = 262,144 (참고 — 비전 hidden_size 768, 오디오 hidden_size 1024)</td></tr>
+      <tr><td class="k">Layers</td><td class="v" contenteditable="true" data-ph="num_hidden_layers 값">텍스트 디코더 <strong>num_hidden_layers = 35</strong> · <strong>num_kv_shared_layers = 20</strong> (35개 중 20개 레이어가 KV cache를 공유하여 메모리 절약) · 비전 인코더 16 레이어 · 오디오 인코더 12 레이어</td></tr>
+      <tr><td class="k">Attention Heads</td><td class="v" contenteditable="true" data-ph="num_attention_heads · num_key_value_heads"><strong>num_attention_heads = 8 / num_key_value_heads = 1</strong> (8:1 GQA, 사실상 MQA에 가까운 극단적 KV 압축) · <code>head_dim = 256</code>(슬라이딩) · <code>global_head_dim = 512</code>(글로벌) — Q 차원 = 8×256 = 2048, KV는 글로벌 시 512차원 단일 헤드. 본 비대칭 head_dim이 외부 추론 엔진(ONNX Runtime GenAI 등) 호환의 핵심 변수</td></tr>
+      <tr><td class="k">Tokenizer</td><td class="v" contenteditable="true" data-ph="BPE / SentencePiece / Tiktoken 등 + vocab size">SentencePiece 기반 · <strong>vocab_size = 262,144</strong>(262K) · 140+ 다국어 토큰화(한국어 포함) · 멀티모달 특수 토큰 정의(image_token_id=258880, boi/eoi=255999/258882, audio_token_id=258881, boa/eoa=256000/258883, video_token_id=258884) · BOS=2, EOS=1·106(채팅 종료), PAD=0 · Gemma 3 호환 system/user/assistant 채팅 템플릿</td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- ========== SECTION 5 ========== -->
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body" contenteditable="true" data-ph="Hugging Face 저장소에 있는 config.json · tokenizer.json · model.safetensors · generation_config.json · special_tokens_map.json 등 주요 파일이 어떤 역할을 하는지 정리합니다.">Hugging Face 저장소(google/gemma-4-E2B-it)는 BF16 정밀도 safetensors 포맷으로 배포되며, Transformers 라이브러리와 직접 호환된다. 주요 파일 구성은 다음과 같다.<br><br>
+<strong>① config.json</strong> — 모델 아키텍처 정의 파일. 본 모델은 단일 <code>Gemma4ForConditionalGeneration</code> 클래스 아래 <strong>3개의 서브 컨피그가 중첩</strong>된 구조이다.&nbsp;<div>▶ <code>text_config</code>(model_type=<code>gemma4_text</code>): hidden_size=1536, intermediate_size=6144, num_hidden_layers=35, num_attention_heads=8, num_key_value_heads=1, head_dim=256/global_head_dim=512, sliding_window=512, max_position_embeddings=131072, vocab_size=262144, num_kv_shared_layers=20, layer_types 배열로 35개 레이어의 sliding/full 어텐션 패턴 명시<span style="font-size: 12pt; letter-spacing: -0.05pt;">.&nbsp;</span></div><div><span style="font-size: 12pt; letter-spacing: -0.05pt;">▶ </span><code style="letter-spacing: -0.05pt;">vision_config</code><span style="font-size: 12pt; letter-spacing: -0.05pt;">(model_type=</span><code style="letter-spacing: -0.05pt;">gemma4_vision</code><span style="font-size: 12pt; letter-spacing: -0.05pt;">): hidden_size=768, num_hidden_layers=16, patch_size=16, vision_soft_tokens_per_image=280.&nbsp;</span></div><div><span style="font-size: 12pt; letter-spacing: -0.05pt;">▶ </span><code style="letter-spacing: -0.05pt;">audio_config</code><span style="font-size: 12pt; letter-spacing: -0.05pt;">(model_type=</span><code style="letter-spacing: -0.05pt;">gemma4_audio</code><span style="font-size: 12pt; letter-spacing: -0.05pt;">): hidden_size=1024, num_hidden_layers=12, conv_kernel_size=5(서브샘플링 컨볼루션), output_proj_dims=1536(텍스트 디코더와 정렬). 폐쇄망 환경 배포 시 KV cache 메모리 산정의 근거가 되는 핵심 파일이며, 특히 </span><strong style="font-size: 12pt; letter-spacing: -0.05pt;">num_kv_shared_layers=20과 num_key_value_heads=1</strong><span style="font-size: 12pt; letter-spacing: -0.05pt;">이 메모리 효율의 핵심 변수이다.</span></div><div><br>
+<strong>② tokenizer.json / tokenizer_config.json / special_tokens_map.json</strong> — SentencePiece 기반 토크나이저 정의. 262K 어휘 사전과 함께 Gemma 4 채팅 템플릿(<code>&lt;|turn&gt;system / user / model</code>), 사고 모드 제어 토큰(<code>&lt;|think|&gt;</code>, <code>&lt;|channel&gt;thought</code>), 멀티모달 입력 마커가 정의되어 있다. 한국어 토크나이징 효율은 vocab 크기가 큰 만큼 영문 대비 토큰 인플레이션이 비교적 적을 것으로 기대된다.<br><br>
+<strong>③ model.safetensors (분할 저장 가능)</strong> — 약 5B 파라미터의 BF16 가중치 파일. 디스크 사용량은 약 9.3GB(BF16 기준), 4bit 양자화(IQ4_XS) 시 약 3GB 수준. Pickle 보안 위험이 없는 safetensors 포맷이라 폐쇄망 배포에 적합하다.<br><br>
+<strong>④ generation_config.json</strong> — 추론 시 기본 샘플링 파라미터. 권장 설정은 <code>temperature=1.0, top_p=0.95, top_k=64</code>이다.<br><br>
+<strong>⑤ preprocessor_config.json / processor_config.json</strong> — 멀티모달 입력 전처리 설정(이미지 토큰 예산 70/140/280/560/1120, 오디오 30초 제한 등).<br><br>
+<strong>⑥ chat_template.jinja</strong> — 멀티턴 대화 템플릿. 사고 모드 활성·비활성 분기, 이전 턴의 thought 블록 제거 규칙이 포함된다.<br><br>
+배포 형태별로는 본 원본(BF16 safetensors) 외에 GGUF(llama.cpp용, ggml-org/gemma-4-E2B-it-GGUF), LiteRT-LM(모바일·온디바이스용), ONNX(Transformers.js)가 별도 저장소로 제공되어 폐쇄망 인프라 형태에 따라 선택적 활용이 가능하다.</div></div>
+  </div>
+
+  <!-- ========== SECTION 6 ========== -->
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body" contenteditable="true" data-ph="공공기관 행정·민원 응대·내부 문서 분석·질의응답·요약·RAG 검색·챗봇·보고서 초안 작성 등 어떤 업무에 어떻게 활용 가능한지 구체 시나리오로 작성합니다."><strong>본 모델은 「AI 지방세 지식인」 Phase 3(폐쇄망 LLM 전환) 환경에서 다음 다섯 영역에 우선 적용 가능하다.</strong><br><br>
+<strong>① 지방세 법령 RAG 질의응답(핵심 시나리오)</strong> — 지방세 담당 공무원의 1차 질의(예: "공유지분 상속 차량의 취득세 산정 방법", "지방세특례제한법 제○조 감면 적용 요건")에 대해, 사전 구축된 olta.re.kr 코퍼스(지방세법·시행령·시행규칙·유권해석·심판례) Top-k 검색 결과를 컨텍스트로 주입하여 근거 인용형 답변을 생성한다. 128K 컨텍스트 덕분에 조문 단위 청킹 결과 10~20개를 충분히 수용한다.<br><br>
+<strong>② 2단계 LLM 검증 파이프라인의 1차 답변 생성기</strong> — 본 시스템의 차별화 요소인 "1차 LLM 답변 생성 → 2차 LLM 근거 대조 검증" 구조에서, 본 모델은 1차 답변 생성기 역할을 수행한다. Thinking Mode 활성화 시 단계별 추론(예: 상속 유형 분류 → 공유지분 계산 → 감면 해당 여부 → 최종 세액)을 수행하여 답변의 논리적 일관성을 높일 수 있다.<br><br>
+<strong>③ 민원 문서 자동 요약 및 분류</strong> — 시민이 작성한 장문 민원(불복 청구서, 이의신청서 등)을 입력받아 6대 분류(법령 적용·세액 산정·감면 적용·절차 문의·불복·기타) 중 자동 라벨링 및 핵심 쟁점 3줄 요약을 생성한다.<br><br>
+<strong>④ 내부 회의록·보고서 초안 작성</strong> — 폐쇄망 환경에서 내부 회의 음성을 STT로 변환한 후(또는 본 모델의 ASR 기능 직접 활용 — 30초 단위 분할), 회의록 정형화·핵심 결정사항 추출·후속 조치 To-Do 추출에 활용한다. 다만 ASR 한국어 정확도는 별도 검증이 필요하다.<br><br>
+<strong>⑤ 함수 호출(Function Calling) 기반 MCP 도구 호출 에이전트</strong> — 본인이 향후 진화시킬 MCP 구조에서 LLM이 "지방세법 제○조 조회" 등 도구를 명시적으로 호출하도록 설계할 때, Native Function Calling 지원이 핵심이다. 답변 근거가 자동으로 로그에 남아 공공 AI 감사 추적성 요구를 구조적으로 충족한다.<br><br>
+<strong>⑥ (확장) 멀티모달 활용</strong> — 차량 등록증·납세증명서·매매계약서 이미지를 OCR + 의미 추출하여 취득세 산정 시 자동 입력 가능. 다만 한국어 OCR 정확도와 행정문서 양식 인식률은 별도 PoC 검증이 필요하다.</div>
+  </div>
+
+  <!-- ========== SECTION 7 ========== -->
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body" contenteditable="true" data-ph="성능 한계 · 환각 가능성 · 한국어 지원 수준 · 보안 이슈 · 라이선스 제한 · 상업적 활용 가능 여부 · 평가 데이터 한계 등을 정리합니다."><strong>① 한국어 법률 도메인 성능의 불확실성</strong> — 사전학습 데이터의 한국어 비중·법률 문서 비중이 비공개이며, 모델 카드에 한국어 단독 벤치마크가 제시되지 않는다. MMMLU(다국어) 67.4%는 일반 지식 기준이며, 지방세법 같은 전문 법률 영역에서의 정확도는 별도 PoC 검증 없이는 신뢰할 수 없다. 환각(특히 조문 번호·금액·요건 등의 사실 오류) 가능성을 RAG 근거 강제 인용 + 2차 검증 LLM으로 차단해야 한다.<br><br>
+<strong>② 일반 벤치마크상 절대 성능의 제약</strong> — Gemma 4 E4B 대비 모든 항목에서 명확한 성능 차이가 있다. MMLU Pro 60.0%(E4B 69.4%), AIME 2026 37.5%(E4B 42.5%), LiveCodeBench v6 44.0%(E4B 52.0%), GPQA Diamond 43.4%(E4B 58.6%). 즉 추론·수학·코딩이 동시에 요구되는 복합 민원에는 E4B가 더 적합할 수 있다. 본 모델은 단순 RAG 응답에 우선 적용하고, 복합 추론은 상위 변형으로 라우팅하는 하이브리드 구조가 합리적이다.<br><br>
+<strong>③ 학습 데이터 컷오프(2025년 1월)</strong> — 2025년 중반 이후 개정된 지방세 관련 법령은 모델 내부 지식에 반영되지 않았다. 따라서 RAG 시 시행일자 메타데이터 기반 최신 조문 우선 검색이 필수이며, 단독 활용 시 구 조문 답변 위험이 존재한다.<br><br>
+<strong>④ 일반적 한계(모델 카드 명시)</strong> — 학습 데이터 편향, 사실 정확성 한계(지식 베이스 아님), 미묘한 언어 뉘앙스·반어법·은유 처리의 어려움, 상식 추론 한계 등이 명시되어 있다. 공공 행정에 적용 시 "참고 의견" 포지션을 유지해야 하며, 최종 판단은 반드시 담당 공무원이 수행하는 책임 구조를 코드와 UI에 강제 노출해야 한다.<br><br>
+<strong>⑤ 라이선스 측면</strong> — Apache-2.0이지만 Google이 별도로 정의한 "Gemma Prohibited Use Policy" 준수 의무가 있다. 위법행위 보조, 차별·증오 콘텐츠 생성 등 일반적 금지 행위 외 공공기관 활용에 직접 충돌하는 조항은 확인되지 않으나, 도입 직전 법무 검토는 권장된다.<br><br>
+<strong>⑥ 폐쇄망 배포 시 추가 고려사항</strong> — Hugging Face에서 모델을 다운로드하려면 Google Gemma Use Policy 동의가 필요하며, 폐쇄망 내부 반입 시 (1) 가중치 무결성 검증, (2) 사고 모드 토큰 처리 라이브러리 버전 일치, (3) tokenizer.json의 bos/eos/pad/unk 토큰 동일성 확인이 운영상 중요하다.<br><br>
+<strong>⑦ 극단적 KV 압축의 양면성</strong> — config.json 분석 결과 <code>num_key_value_heads=1</code>(MQA에 가까운 8:1 GQA)과 <code>num_kv_shared_layers=20</code>(35개 중 20개 레이어 KV cache 공유)이 적용되어 있다. 장점은 128K 컨텍스트에서도 KV cache 메모리가 동급 모델 대비 현저히 작다는 점이나(엣지 디바이스 친화), 단점은 외부 추론 엔진(ONNX Runtime GenAI, vLLM 일부 버전, TensorRT-LLM)이 비대칭 head_dim(슬라이딩 256 / 글로벌 512)과 KV 공유 패턴을 아직 완전히 지원하지 않아 <strong>llama.cpp 외 엔진에서 변환·로딩 실패가 보고</strong>된다(Microsoft onnxruntime-genai Issue #2062 등). 폐쇄망 1차 배포는 <strong>Transformers + vLLM 최신판 또는 llama.cpp(GGUF)</strong> 조합이 가장 안전하다.</div>
+  </div>
+
+  <!-- ========== SECTION 8 ========== -->
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body" contenteditable="true" data-ph="이 모델을 실제 조직 업무에 도입한다면 어떤 조건에서 적합한지, 어떤 추가 검증·POC가 필요한지 본인 의견을 작성합니다."><strong>결론적으로 Gemma-4-E2B-it는 「AI 지방세 지식인」 Phase 3 폐쇄망 환경의 1차 테스트 모델로 적합하다.</strong> 5B 파라미터급에서 128K 장문 컨텍스트, Native Function Calling, Apache-2.0 라이선스, BF16 safetensors 표준 포맷이라는 4대 조건을 동시에 만족하는 SLM은 현 시점에 흔치 않으며, 단일 GPU 인프라가 현실적인 기초지자체 환경에 부합한다.<br><br>
+<strong>다만 다음 3단계 추가 검증을 거친 후 실서비스 적용을 결정할 것을 제안한다.</strong><br><br>
+<strong>[PoC 1단계 — 한국어 법률 응답 정성 평가]</strong> 한국지방세연구원 공개 사례 50건을 골든셋으로 구성하여, 본 모델 단독 답변 vs 본 모델 + RAG vs Qwen2.5-7B-Instruct + RAG vs LG EXAONE 3.5(7.8B) + RAG의 4-way 비교 평가를 실시한다. 평가 항목은 ① 조문 인용 정확도, ② 사실 오류율, ③ 답변 형식 준수율(①~⑥ 구조), ④ 지방세 전문 용어 적합성 4개. 담당 공무원 3인 블라인드 평가로 통계 검증.<br><br>
+<strong>[PoC 2단계 — 실 부하 환경 추론 성능]</strong> 단일 NVIDIA L4 또는 A10 GPU에서 동시 사용자 5~10명, 평균 입력 4K 토큰, 평균 출력 1K 토큰 조건으로 TTFT(Time-to-First-Token), TPS(Tokens-per-Second), 메모리 사용량을 측정한다. 4bit 양자화(Q4_K_M GGUF 또는 IQ4_XS)와 BF16 원본의 품질 차이를 동일 골든셋으로 비교 검증한다.<br><br>
+<strong>[PoC 3단계 — 한국어 LoRA 도메인 적응 가능성]</strong> olta.re.kr 누적 Q&amp;A 5,000건과 지방세법 조문 코퍼스를 활용한 QLoRA 미세조정을 실시하여, 도메인 적응 후 답변 품질이 RAG 단독 대비 유의미하게 개선되는지 평가한다. 비용 대비 효과가 입증되면 Phase 3 정식 배포 모델 후보로 확정한다.<br><br>
+<strong>[대안 검토]</strong> 만약 한국어 정확도가 EXAONE 3.5 / Qwen2.5 / HyperCLOVA X Seed 대비 명확히 떨어진다면, 본 모델은 (a) 1차 답변 생성기, (b) 보조 분류·요약 모델로 역할을 한정하고, 메인 추론은 한국어 특화 모델로 전환하는 듀얼 모델 아키텍처가 합리적이다. 본 보고서는 본 모델을 단독 솔루션이 아닌 <strong>"폐쇄망 후보군의 강력한 비교 기준선(Strong Baseline)"</strong>으로 자리매김할 것을 제안한다.</div>
+  </div>
+
+  <!-- ========== SECTION 9 ========== -->
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list" id="refList">
+      <li contenteditable="true" data-ph="Hugging Face 모델 페이지: https://huggingface.co/...">Hugging Face 모델 카드: https://huggingface.co/google/gemma-4-E2B-it</li>
+      <li contenteditable="true" data-ph="모델 논문 또는 기술 블로그: https://...">Google DeepMind Gemma 4 공식 페이지: https://deepmind.google/models/gemma/gemma-4/</li>
+      <li contenteditable="true" data-ph="GitHub 저장소: https://github.com/...">Google 공식 출시 블로그: https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/</li>
+      <li contenteditable="true" data-ph="">Hugging Face 기술 블로그(Welcome Gemma 4): https://huggingface.co/blog/gemma4</li>
+      <li contenteditable="true" data-ph="">Gemma 4 컬렉션(Base/Instruct/MoE 전체): https://huggingface.co/collections/google/gemma-4</li>
+      <li contenteditable="true" data-ph="">아키텍처 시각 가이드(Maarten Grootendorst): https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-gemma-4</li>
+      <li contenteditable="true" data-ph="">GGUF 양자화(폐쇄망 배포 후보): https://huggingface.co/ggml-org/gemma-4-E2B-it-GGUF</li>
+      <li contenteditable="true" data-ph="">GitHub 공식 저장소 / Cookbook: https://github.com/google-gemma</li>
+    </ul>
+  </div>
+
+  <!-- ========== SUBMISSION ========== -->
+  <div class="callout">
+    <div class="label">Submission · 제출 정보</div>
+    <p><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong> <span contenteditable="true" data-ph="https://github.com/본인아이디/slm-model-report-소속-이름">https://github.com/namu052/slm-model-report-Gyeongbuk_Goryeong-KIMHYUNSOO</span></p>
+    <p><strong style="color:var(--ink);font-weight:700">파일명:</strong> 경상북도 고령군청_김현수_slm_report</p>
+    <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">최종 제출 시 EDIT 버튼을 눌러 모든 항목을 채운 뒤, [HTML 저장] 버튼으로 파일을 다운로드해 GitHub Repository에 업로드하세요. 또는 EDIT하지 않고 동일한 양식 그대로 생성형 AI(Claude·ChatGPT 등)에 첨부해 채움을 요청해도 무방합니다.</p>
+  </div>
+
+</section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT -->
+<!-- ============================================================ -->
+<script>
+let editMode = false;
+
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){
+    btn.classList.add('active');
+    btn.textContent = '✎ EDITING';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '✎ EDIT';
+  }
+}
+
+// HTML 저장 — 현재 DOM 상태 그대로 다운로드
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault(); saveHtml();
+  } else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){
+      document.activeElement.blur();
+    } else {
+      toggleEdit();
+    }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){
+      toggleEdit();
+    }
+  }
+});
+</script>
+
+
+
+<div class="glasp-extension-toaster" style="display: block; width: 320px; margin: unset; padding: unset; border: unset; border-radius: unset; outline: unset; background-color: unset; box-shadow: unset; position: fixed; top: 40px; right: 24px; z-index: 9999;"></div><div class="glasp-extension" style="display: block; width: unset; margin: unset; padding: unset; border: unset; border-radius: unset; outline: unset; background-color: unset; box-shadow: unset; position: fixed; bottom: 16px; right: 16px; z-index: 9999;"><div class="glasp-extension" style="font-family: inherit;"></div></div><div id="__toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgb(15, 23, 42); color: rgb(255, 255, 255); padding: 12px 24px; border-radius: 24px; font: 700 11px Pretendard, sans-serif; letter-spacing: 0.6px; box-shadow: rgba(15, 23, 42, 0.4) 0px 8px 28px; z-index: 400; border: 1px solid rgb(37, 99, 235); opacity: 0; transition: 0.3s;">✓ 경상북도 고령군청_김현수_slm_report.html 다운로드 완료</div></body></html>

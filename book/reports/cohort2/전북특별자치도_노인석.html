@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 전문인재 과정 · 1일차 SLM 모델 조사 보고서</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F5F9;
+  --paper:#FFFFFF;
+  --surface:#F8FAFC;
+  --surface-2:#F1F5F9;
+  --border:#E2E8F0;
+  --border-light:#F1F5F9;
+  --ink:#0F172A;
+  --ink-soft:#334155;
+  --ink-mute:#64748B;
+  --ink-faint:#94A3B8;
+  --accent:#2563EB;
+  --accent-deep:#1E40AF;
+  --accent-soft:#EFF6FF;
+  --accent-border:#BFDBFE;
+  --accent-2:#0EA5E9;
+  --highlight:#F59E0B;
+  --code-bg:#F1F5F9;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.08);
+  --sans:'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:13pt;line-height:1.85;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:var(--accent-deep);font-weight:500}
+
+/* ========== TOOLBAR ========== */
+.tb{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:200;
+  background:rgba(241,245,249,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:0 22px;
+}
+.tb-brand{font-weight:700;font-size:14px;letter-spacing:-.2px;color:var(--ink)}
+.tb-brand .sub{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;letter-spacing:1.8pt;text-transform:uppercase;color:var(--ink-mute)}
+.tb-spacer{flex:1}
+.tb button{
+  height:36px;padding:0 14px;border-radius:7px;cursor:pointer;
+  font:600 12.5px var(--sans);letter-spacing:-.1px;
+  background:var(--paper);border:1px solid var(--border);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s;
+}
+.tb button:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-deep)}
+.tb .tb-edit.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-edit.active:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.tb .tb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb .tb-save:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+.tb .tb-print{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb .tb-print:hover{background:#000;border-color:#000;color:#fff}
+
+/* ========== PAGE STACK ========== */
+.stack{padding:80px 0 60px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.sheet{
+  width:210mm;min-height:297mm;background:var(--paper);color:var(--ink);
+  padding:22mm 22mm 24mm;position:relative;overflow:hidden;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:var(--shadow-md);
+}
+
+/* ========== COVER ========== */
+.cv{padding:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;overflow:hidden;border:none}
+.cv::before{content:"";position:absolute;top:0;left:0;right:0;height:4mm;background:var(--accent);z-index:3}
+.cv-content{flex:1;padding:26mm 22mm 14mm;display:flex;flex-direction:column;justify-content:space-between}
+.cv-top .cv-org{
+  font-family:var(--mono);font-size:8.5pt;letter-spacing:2.8pt;
+  text-transform:uppercase;color:var(--ink-faint);line-height:2;
+}
+.cv-top .cv-org strong{color:rgba(255,255,255,.7);font-weight:600}
+.cv-center{padding:16mm 0 12mm}
+.cv-year{font-family:var(--mono);font-size:9pt;letter-spacing:1.8pt;color:var(--ink-faint);margin-bottom:6mm;text-transform:uppercase}
+.cv-title{font-size:36pt;font-weight:800;line-height:1.15;letter-spacing:-1.5pt;margin-bottom:8mm}
+.cv-rule{width:14mm;height:3pt;background:var(--accent);border-radius:2pt;margin-bottom:8mm}
+.cv-doctype{font-size:10pt;font-weight:700;letter-spacing:2.5pt;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:5mm}
+.cv-sub{font-size:11pt;color:rgba(255,255,255,.45);line-height:1.75;max-width:130mm}
+.cv-bottom{padding-top:10mm;border-top:1px solid rgba(255,255,255,.12)}
+.cv-meta{display:flex;gap:10mm}
+.m{display:flex;flex-direction:column;gap:1mm}
+.m-l{font-family:var(--mono);font-size:8pt;letter-spacing:1.8pt;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.m-v{font-size:11pt;font-weight:600;color:rgba(255,255,255,.75)}
+.cv-foot{
+  padding:5mm 22mm;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.08);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:8pt;color:rgba(255,255,255,.3);letter-spacing:.8pt;
+}
+.cv-foot-r{text-align:right}
+
+/* ========== ID BLOCK ========== */
+.id-block{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:5mm 6mm;margin-bottom:8mm;
+}
+.id-block .lbl{
+  font-family:var(--mono);font-size:8pt;font-weight:600;letter-spacing:2pt;
+  text-transform:uppercase;color:var(--ink-mute);margin-bottom:4mm;
+}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm 8mm}
+.id-cell{display:flex;flex-direction:column;gap:1mm}
+.id-cell .k{font-size:9pt;font-weight:600;color:var(--ink-mute);letter-spacing:.3pt}
+.id-cell .v{font-size:11pt;font-weight:600;color:var(--ink);min-height:18pt;padding:1mm 2mm;border-radius:4px}
+
+/* ========== SECTION ========== */
+.sec{margin-bottom:9mm;padding-bottom:9mm;border-bottom:1px solid var(--border-light)}
+.sec:last-of-type{border-bottom:none}
+.sec h2{
+  font-size:11pt;font-weight:700;letter-spacing:-.2pt;
+  color:var(--ink);margin-bottom:4mm;
+  display:flex;align-items:center;gap:3mm;
+}
+.sec h2 .num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22pt;height:22pt;background:var(--accent);color:#fff;
+  border-radius:6pt;font-family:var(--mono);font-size:9pt;font-weight:700;flex-shrink:0;
+}
+.sec .body{
+  font-size:11pt;line-height:1.85;color:var(--ink-soft);
+  background:var(--surface);border-radius:6px;padding:4mm 5mm;
+  min-height:28pt;
+}
+.sec .body p{margin-bottom:3mm}
+.sec .body p:last-child{margin-bottom:0}
+.sec .body ul{margin:2mm 0 2mm 5mm}
+.sec .body ul li{margin-bottom:1.5mm}
+.sec .body strong{color:var(--ink);font-weight:700}
+
+/* ========== KV TABLE ========== */
+.kv-table{width:100%;border-collapse:collapse;font-size:11pt}
+.kv-table tr{border-bottom:1px solid var(--border-light)}
+.kv-table tr:last-child{border-bottom:none}
+.kv-table .k{
+  width:36%;padding:3mm 4mm 3mm 0;font-weight:600;color:var(--ink-mute);
+  font-size:10pt;vertical-align:top;white-space:nowrap;
+}
+.kv-table .v{
+  padding:3mm 4mm;color:var(--ink-soft);background:var(--surface);
+  border-radius:4px;font-size:11pt;vertical-align:top;
+}
+
+/* ========== CALLOUT ========== */
+.callout{
+  background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:8px;
+  padding:5mm 6mm;margin-top:8mm;
+}
+.callout .label{
+  font-family:var(--mono);font-size:9pt;font-weight:700;letter-spacing:1.5pt;text-transform:uppercase;
+  color:var(--accent-deep);margin-bottom:3.5mm;
+  display:flex;align-items:center;gap:2mm;
+}
+.callout .label::before{content:"●";font-size:7pt;color:var(--accent)}
+.callout p{margin:1.5mm 0;font-size:11pt;color:var(--ink);line-height:1.75;text-align:left}
+
+/* ========== LINK LIST ========== */
+.link-list{margin:4mm 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2mm}
+.link-list li{
+  position:relative;padding:2mm 0 2mm 8mm;
+  font-size:11pt;line-height:1.75;color:var(--ink-soft);
+  border-bottom:1px dashed var(--border);
+}
+.link-list li:last-child{border-bottom:none}
+.link-list li::before{
+  content:"";position:absolute;left:1.5mm;top:4.5mm;
+  width:8pt;height:8pt;background:var(--accent);border-radius:50%;
+}
+
+/* ========== EDIT MODE ========== */
+[contenteditable=true]{
+  outline:1px dashed var(--accent-border);outline-offset:2px;
+  background:var(--accent-soft) !important;
+  border-radius:3px;cursor:text;caret-color:var(--accent);
+}
+[contenteditable=true]:focus{
+  outline:2px solid var(--accent);background:#fff !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+body:not(.edit-mode) [contenteditable=true]{
+  outline:none;background:transparent !important;box-shadow:none;
+}
+body:not(.edit-mode) .sec p[contenteditable=true],
+body:not(.edit-mode) .sec .body[contenteditable=true]{
+  background:var(--surface) !important;
+}
+body.edit-mode::after{
+  content:"편집 모드 · 텍스트 클릭 후 입력 · ESC 또는 EDIT 다시 누르면 종료 · Ctrl+S 로 HTML 저장";
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 22px;border-radius:24px;
+  font:700 10.5px var(--sans);letter-spacing:1.2px;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:300;pointer-events:none;
+  border:1px solid var(--accent);
+}
+
+/* ========== PRINT ========== */
+@media print{
+  @page{size:A4 portrait;margin:14mm 14mm 16mm 14mm}
+  @page :first{margin:0}
+  html,body{background:#fff !important}
+  .tb{display:none !important}
+  .stack{padding:0;gap:0}
+  .sheet{
+    width:auto;min-height:auto;box-shadow:none !important;border:none !important;
+    margin:0;padding:0 0 6mm;page-break-after:always;border-radius:0;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .cv{margin:0;padding:0;min-height:297mm;page-break-after:always}
+  .sheet:not(.cv){padding:18mm 18mm 18mm}
+  [contenteditable=true]{outline:none !important;box-shadow:none !important}
+}
+</style>
+</head>
+<body>
+
+<div class="tb">
+  <div class="tb-brand">SLM 모델 조사 보고서<span class="sub">Day 1 · Assignment</span></div>
+  <div class="tb-spacer"></div>
+  <button class="tb-edit" id="btnEdit" onclick="toggleEdit()">✎ EDIT</button>
+  <button class="tb-save" onclick="saveHtml()">⬇ HTML 저장</button>
+  <button class="tb-print" onclick="window.print()">⬇ PDF 인쇄</button>
+</div>
+
+<div class="stack">
+
+<!-- COVER PAGE -->
+<section class="sheet cv">
+  <div class="cv-content">
+    <div class="cv-top">
+      <div class="cv-org">
+        <strong>AI 전문인재 과정 · 2026</strong>
+        Public AI Expert Program · Hugging Face SLM Research Report
+      </div>
+    </div>
+    <div class="cv-center">
+      <div class="cv-year">Day 1 · Assignment 01</div>
+      <h1 class="cv-title">Hugging Face SLM<br>모델 조사 보고서</h1>
+      <div class="cv-rule"></div>
+      <div class="cv-doctype">기술 분석 · 모델 카드 분해 리포트</div>
+      <div class="cv-sub">Hugging Face에서 1B~7B 규모의 Small Language Model을 선택해 모델 스펙·학습 데이터·튜닝 방식·파라미터 구조·활용 가능성을 분석한 1인 1리포트입니다.</div>
+    </div>
+    <div class="cv-bottom">
+      <div class="cv-meta">
+        <div class="m"><div class="m-l">Track</div><div class="m-v">SLM Research</div></div>
+        <div class="m"><div class="m-l">Format</div><div class="m-v">HTML Report</div></div>
+        <div class="m"><div class="m-l">Submission</div><div class="m-v">GitHub Public Repo</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cv-foot">
+    <div class="cv-foot-l">
+      AI 전문인재 과정
+      <span class="sub">Day 1 · 1B~7B Small Language Model</span>
+    </div>
+    <div class="cv-foot-r">Hugging Face Model Card Analysis · Technical Report Template</div>
+  </div>
+</section>
+
+<!-- BODY PAGE -->
+<section class="sheet">
+
+  <!-- STUDENT IDENTITY -->
+  <div class="id-block">
+    <div class="lbl">Student Identity · 수강생 정보</div>
+    <div class="id-grid">
+      <div class="id-cell">
+        <span class="k">수강생 소속</span>
+        <span class="v" contenteditable="true">전북특별자치도</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">수강생 이름</span>
+        <span class="v" contenteditable="true">노인석</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">선택 모델명</span>
+        <span class="v" contenteditable="true">Qwen/Qwen3.5-4B-Instruct</span>
+      </div>
+      <div class="id-cell">
+        <span class="k">Hugging Face 모델 링크</span>
+        <span class="v" contenteditable="true">https://huggingface.co/Qwen/Qwen3.5-4B</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 01 -->
+  <div class="sec">
+    <h2><span class="num">01</span>모델 선택 이유</h2>
+    <div class="body" contenteditable="true"><p><span style="font-size: 14.6667px;">- (현&nbsp; 실)&nbsp;</span>일반 행정직원들 중&nbsp;<span style="font-size: 14.6667px;">생성형 AI 활용에 익숙하지 않은</span><span style="font-size: 14.6667px;">&nbsp;인원이 다수 존재</span></p><p><span style="font-size: 14.6667px;">- (필요성)&nbsp;</span><span style="font-size: 11pt;">복잡한 프롬프트 없이도 내부 문서, 정책자료, 사업계획서, 지침, 민원자료 등을 기반으로 요약·질의응답·보고서 초안 작성할 수 있도록 지원할수 있는 SLM 이 필요</span></p><p><span style="font-size: 14.6667px;">-</span><span style="font-size: 14.6667px;">&nbsp;(조&nbsp; 건) 행정기관에서 긴 문서 분석 및 보고서 품질 향상을 위한 여유있는 컨텍스트, 한국어 지원</span></p>
+      <p><strong>① Apache 2.0 라이선스 — 공공기관 법적 안전성 확보:</strong> Apache 2.0은 공공기관의 상업적·비상업적 활용, 수정, 재배포를 제한 없이 허용한다. 감사 및 정보공개 요청 상황에서도 라이선스 소명이 용이하며, 별도 계약 없이 온프레미스 배포가 즉시 가능하다.</p>
+      <p><strong>② 262K 토큰 컨텍스트 — 행정 장문 문서 단일 처리:</strong> 공공기관 조례, 사업계획서, 회의록 등은 수십 페이지에 달하는 경우가 많다. 262K 컨텍스트는 A4 기준 약 330페이지에 해당하며, RAG 구성 없이도 문서 전체를 단일 입력으로 처리할 수 있다.</p>
+      <p><strong>③ 하이브리드 아키텍처 — 12GB GPU에서 262K 운용 가능:</strong> Gated DeltaNet(선형 어텐션, 75%)과 Full Attention(25%)을 결합한 하이브리드 구조로 KV 캐시 비용이 일반 Transformer 대비 대폭 절감된다. 12GB VRAM GPU 환경에서도 fp16 모드로 262K 컨텍스트를 여유 있게 운용할 수 있는 유일한 후보 모델이다.</p>
+      <p><strong>④ 201개 언어 공식 지원 — 한국어 처리 신뢰성:</strong> 201개 언어를 공식 학습 데이터에 포함하여 한국어 행정 문서의 자연스러운 이해와 생성이 가능하다.</p>
+      <p><strong>⑤ GPQA Diamond 76.2% — 높은 추론 능력:</strong> 4B 규모 모델 중 최고 수준의 추론 성능으로 복잡한 법령 해석, 정책 분석, 조례 기반 질의응답에 신뢰성 있는 보조 도구로 기능할 수 있다.</p>
+      <p><strong>⑥ 멀티모달(이미지+텍스트) — 스캔 공문 처리:</strong> 이미지와 텍스트를 통합 처리하는 비전-언어 모델로, 스캔된 공문서나 이미지 형태의 행정 자료도 직접 분석할 수 있다.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 02 -->
+  <div class="sec">
+    <h2><span class="num">02</span>모델 기본 정보</h2>
+    <table class="kv-table">
+      <tbody>
+        <tr><td class="k">모델명</td><td class="v" contenteditable="true">Qwen/Qwen3.5-4B-Instruct (베이스 모델: Qwen/Qwen3.5-4B)</td></tr>
+        <tr><td class="k">개발 주체</td><td class="v" contenteditable="true">Alibaba Cloud — Qwen Team (중국, 항저우)</td></tr>
+        <tr><td class="k">모델 규모</td><td class="v" contenteditable="true">4.0B (40억 파라미터)</td></tr>
+        <tr><td class="k">라이선스</td><td class="v" contenteditable="true">Apache 2.0 — 상업적·공공기관 활용 완전 무제한, 수정·재배포 허용</td></tr>
+        <tr><td class="k">모델 유형</td><td class="v" contenteditable="true">Instruction-tuned · 멀티모달(텍스트+이미지) · Thinking 모드 지원 · 하이브리드 아키텍처</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 03 -->
+  <div class="sec">
+    <h2><span class="num">03</span>학습 데이터와 튜닝 방식</h2>
+    <div class="body" contenteditable="true">
+      <p><strong>사전학습 데이터:</strong> 201개 언어를 포함하는 대규모 다국어 웹 코퍼스, 코드, 수학, 과학 데이터로 구성된 고품질 학습 데이터셋을 활용하였다. 한국어를 포함한 아시아권 언어 데이터가 공식적으로 포함되어 있으며, 이미지-텍스트 쌍 데이터를 통해 비전-언어 통합 학습(Unified Vision-Language Foundation)이 적용되었다. 구체적인 학습 토큰 수와 데이터 소스 비율은 공개 범위 내에서 상세히 확인되지 않는다.</p>
+      <p><strong>튜닝 방식:</strong></p>
+      <ul>
+        <li><strong>SFT (Supervised Fine-Tuning):</strong> 지시 따르기(Instruction Following) 데이터를 활용한 지도 학습 파인튜닝으로 자연어 지시에 대한 응답 품질을 강화하였다.</li>
+        <li><strong>RL (강화학습 기반 정렬):</strong> 백만 에이전트 규모의 강화학습 환경에서 점진적으로 복잡도를 높이는 태스크 분포를 적용해 실세계 적응력을 강화하였다. 이는 Qwen3.5 시리즈의 핵심 차별점으로, AIME·GPQA 등 고난도 추론 벤치마크에서 두드러진 성과로 이어졌다.</li>
+        <li><strong>Multi-token Prediction Training:</strong> 단일 스텝에서 다수의 토큰을 예측하는 학습 기법을 적용해 추론 효율과 생성 품질을 동시에 향상시켰다.</li>
+        <li><strong>Thinking 모드 (Chain-of-Thought):</strong> 복잡한 추론이 필요한 질의에 대해 내부 사고 과정(&lt;think&gt; 태그)을 생성한 후 최종 답변을 출력하는 방식을 지원한다. 4B 소형 모델에서는 기본 비활성화 상태이며, 별도 파라미터 설정으로 활성화 가능하다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 04 -->
+  <div class="sec">
+    <h2><span class="num">04</span>파라미터 및 구조적 특징</h2>
+    <table class="kv-table">
+      <tbody>
+        <tr><td class="k">Architecture</td><td class="v" contenteditable="true">하이브리드 Transformer — Gated DeltaNet(선형 어텐션, 75%) + Full Softmax Attention(GQA, 25%) 결합. 패턴: 8×(3×DeltaNet→FFN→1×Attention→FFN)</td></tr>
+        <tr><td class="k">Context Length</td><td class="v" contenteditable="true">262,144 토큰 (기본값) · 최대 1,010,000 토큰까지 확장 가능 · Thinking 능력 유지를 위해 최소 128K 이상 권장</td></tr>
+        <tr><td class="k">Hidden Size</td><td class="v" contenteditable="true">2,560 (config.json hidden_size 기준 추정 — 4B 하이브리드 아키텍처 기준)</td></tr>
+        <tr><td class="k">Layers</td><td class="v" contenteditable="true">32 layers (DeltaNet 24개 + Full Attention 8개 교차 배치)</td></tr>
+        <tr><td class="k">Attention Heads</td><td class="v" contenteditable="true">Full Attention: Q-head 32 / KV-head 8 (GQA 구조) · DeltaNet 구간은 KV 캐시 미적용 (선형 어텐션)</td></tr>
+        <tr><td class="k">Tokenizer</td><td class="v" contenteditable="true">Qwen 전용 BPE 토크나이저 · Vocab Size: 151,936 · 한국어·한자·아랍어 등 다국어 토큰 포함 · tiktoken 기반</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 05 -->
+  <div class="sec">
+    <h2><span class="num">05</span>모델 파일 구성</h2>
+    <div class="body" contenteditable="true">
+      <p><strong>HuggingFace 저장소 경로:</strong> <code>Qwen/Qwen3.5-4B-Instruct</code> (https://huggingface.co/Qwen/Qwen3.5-4B)</p>
+      <p><strong>주요 파일 및 역할:</strong></p>
+      <ul>
+        <li><code>config.json</code> — 모델 아키텍처 전체 설정 파일. <code>model_type</code>(qwen3_5), <code>hidden_size</code>, <code>num_hidden_layers</code>, <code>num_attention_heads</code>, <code>num_key_value_heads</code>, <code>max_position_embeddings</code>(262144) 등 핵심 구조 파라미터를 정의한다. 하이브리드 아키텍처 관련 <code>use_sliding_window</code>, DeltaNet 레이어 배치 설정도 포함된다.</li>
+        <li><code>tokenizer.json</code> — BPE 토크나이저의 어휘(vocab), 병합 규칙(merge rules), 특수 토큰 등 토큰화 전 과정을 담은 파일. 151,936개 어휘로 구성되며 한국어 음절·자모 단위 토큰이 포함되어 있다.</li>
+        <li><code>tokenizer_config.json</code> — 채팅 템플릿(<code>chat_template</code>) 및 Thinking 모드 활성화/비활성화 설정 포함. <code>enable_thinking</code> 파라미터로 내부 추론 과정 출력 여부를 제어한다.</li>
+        <li><code>model.safetensors</code> (또는 분할 파일 <code>model-0001-of-XXXX.safetensors</code>) — 실제 모델 가중치를 저장하는 파일. fp16 기준 약 8GB. safetensors 형식은 pickle 대비 보안성과 로딩 속도가 우수하다.</li>
+        <li><code>generation_config.json</code> — 기본 생성 파라미터 설정. <code>max_new_tokens</code>, <code>temperature</code>, <code>top_p</code>, <code>repetition_penalty</code> 등의 초기값을 정의한다.</li>
+        <li><code>special_tokens_map.json</code> — <code>&lt;|im_start|&gt;</code>, <code>&lt;|im_end|&gt;</code>, <code>&lt;think&gt;</code>, <code>&lt;/think&gt;</code> 등 채팅 및 Thinking 모드에 사용되는 특수 토큰 목록을 정의한다.</li>
+      </ul>
+      <p><strong>GGUF 양자화 버전:</strong> Unsloth 등 커뮤니티에서 <code>Q4_K_M</code>, <code>Q5_K_M</code>, <code>Q8_0</code> 등 다양한 정밀도의 GGUF 파일을 제공한다. Q4_K_M 기준 약 3.2GB로 Ollama, llama.cpp 등 경량 추론 프레임워크에서 바로 사용 가능하다.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 06 -->
+  <div class="sec">
+    <h2><span class="num">06</span>활용 가능 업무</h2>
+    <div class="body" contenteditable="true">
+      <p>전북특별자치도 행정 환경에서 Qwen3.5-4B-Instruct를 활용할 수 있는 구체적 시나리오는 다음과 같다.</p>
+      <ul>
+        <li><strong>장문 행정문서 요약:</strong> 사업계획서, 예산안, 연간 결산 보고서 등 30~50페이지 문서를 통째로 붙여넣으면 262K 컨텍스트가 전체를 수용하여 핵심 항목별 자동 요약문을 생성한다. 비숙련 직원도 "3줄로 요약해줘"와 같은 단순 지시만으로 활용 가능하다.</li>
+        <li><strong>조례·법령 기반 자연어 질의응답:</strong> 전북특별자치도 조례 전문을 컨텍스트에 포함시킨 후 "○○ 사업의 신청 자격은?" 등의 자연어 질문을 입력하면 관련 조항을 찾아 답변을 생성한다. RAG 시스템 없이도 단독으로 활용 가능하다.</li>
+        <li><strong>회의록 → 보고서 초안 자동 변환:</strong> 녹취 또는 메모 형태의 회의록을 입력하면 공문서 형식의 결과보고서 초안을 자동으로 생성한다. "공문서 형식으로 정리해줘"라는 짧은 지시만으로 작동한다.</li>
+        <li><strong>RAG 기반 내부 지식검색 시스템:</strong> 내부 규정집, 업무 매뉴얼, 유권해석 자료를 벡터DB에 저장하고 Qwen3.5-4B를 생성 모델로 활용하는 RAG 파이프라인을 구성할 수 있다. 부서별 업무 챗봇, 민원 응답 초안 생성 등에 활용 가능하다.</li>
+        <li><strong>스캔 공문서 분석 (멀티모달):</strong> 이미지로 스캔된 공문서, 현장 점검 사진, 도면 이미지 등을 직접 입력하여 내용을 파악하거나 관련 행정 조치를 제안받을 수 있다. 종이 문서 중심 행정 환경에서 디지털 전환의 입구 역할을 할 수 있다.</li>
+        <li><strong>생성형 AI 실습 교육용 SLM:</strong> AI·데이터분석 전문인재 양성과정 수강생들이 온프레미스 환경에서 직접 모델을 구동하고 프롬프트 실험, 파인튜닝 기초를 실습할 수 있는 교육용 모델로도 활용 가능하다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 07 -->
+  <div class="sec">
+    <h2><span class="num">07</span>한계와 주의사항</h2>
+    <div class="body" contenteditable="true">
+      <ul>
+        <li><strong>환각(Hallucination) 위험:</strong> 언어 모델 특성상 사실과 다른 정보를 그럴듯하게 생성할 수 있다. 법령 조항, 예산 수치, 날짜 등 정밀한 행정 정보는 반드시 원본 문서와 교차 검증 후 활용해야 하며, 최종 결재 문서에 그대로 사용하는 것은 지양해야 한다.</li>
+        <li><strong>한국어 행정 전문 용어 성능 미검증:</strong> 201개 언어를 공식 지원하지만 한국어 행정 전문 용어(예: 지방재정법, 훈령·예규 등)에 대한 성능은 별도 POC를 통해 검증이 필요하다. 범용 한국어 성능과 행정 특화 성능은 다를 수 있다.</li>
+        <li><strong>라이선스 출처 검토:</strong> Apache 2.0으로 공공기관 활용이 법적으로 자유롭지만, Alibaba Cloud(중국 기업) 개발 모델이라는 점에서 국가 보안 정책 및 기관 내부 보안 지침에 따른 사전 검토가 필요하다. 기밀 자료를 모델에 입력할 경우 온프레미스(내부망) 배포가 필수이다.</li>
+        <li><strong>12GB GPU에서 KV 캐시 관리:</strong> 262K 컨텍스트 풀 운용 시 fp16 모드에서 약 9.5GB를 소비한다. GPU 메모리가 12GB에 근접하므로 다수 사용자 동시 처리(배치) 환경에서는 OOM(Out of Memory) 발생 가능성이 있으며, 이 경우 KV 캐시 양자화(q8/q4)를 적용해야 한다.</li>
+        <li><strong>Thinking 모드 기본 비활성화:</strong> 4B 소형 시리즈는 Thinking 모드가 기본 비활성화 상태이다. 활성화하려면 <code>tokenizer_config.json</code>의 채팅 템플릿을 수정하거나 추론 시 <code>enable_thinking=True</code> 파라미터를 명시해야 한다. Ollama 등 일부 프레임워크에서는 별도 설정 파일이 필요하다.</li>
+        <li><strong>멀티모달 프레임워크 호환성:</strong> 이미지 처리(비전) 기능은 Ollama 등 일부 경량 프레임워크에서 별도 vision 파일 설정이 필요하며, 현재 모든 배포 환경에서 지원되는 것은 아니다. 텍스트 전용 모드로도 핵심 기능 대부분을 활용할 수 있다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 08 -->
+  <div class="sec">
+    <h2><span class="num">08</span>종합 의견</h2>
+    <div class="body" contenteditable="true">
+      <p>Qwen3.5-4B-Instruct는 2026년 3월 기준, 전북특별자치도 공공기관 행정업무 지원을 위한 소형 언어 모델(SLM)로서 현실적으로 선택 가능한 후보 중 가장 균형 잡힌 모델이다.</p>
+      <p>핵심 선택 근거를 세 가지로 요약하면, 첫째 Apache 2.0 라이선스로 법적·제도적 도입 장벽이 없으며, 둘째 하이브리드 아키텍처가 제공하는 262K 컨텍스트를 12GB GPU 환경에서 현실적으로 운용할 수 있고, 셋째 201개 언어 공식 지원과 GPQA Diamond 76.2%의 추론 능력이 행정 문서 처리와 질의응답 업무에서 신뢰성 있는 성과를 기대하게 한다.</p>
+      <p>특히 생성형 AI에 익숙하지 않은 일반 행정직원을 대상으로 할 때, 긴 공문서를 RAG 구성 없이 직접 붙여넣어 처리할 수 있다는 점은 운영 복잡도를 낮추는 결정적 강점이다. 이는 초기 도입 단계에서 IT 전문 인력 없이도 시범 운영이 가능함을 의미한다.</p>
+      <p>단, 실제 조직 도입을 위해서는 다음 절차가 필수이다. 내부 행정 문서(조례, 사업계획서, 민원자료)를 활용한 POC(Proof of Concept) 수행을 통해 한국어 행정 용어 처리 정확도를 검증해야 하며, 기관 보안 정책에 따른 온프레미스 배포 환경 구성이 선행되어야 한다. 이후 단계에서는 한국어 행정 특화 파인튜닝(LoRA/QLoRA) 또는 한국어 RAG 파이프라인 구성을 통해 성능을 추가로 강화하는 방향이 바람직하다.</p>
+      <p>장기적으로는 EXAONE 계열(LG AI Research)의 컨텍스트 개선 버전이나 국내 공공기관 특화 파인튜닝 모델이 등장할 경우 전환을 검토할 수 있으나, 현 시점에서 Qwen3.5-4B-Instruct는 비용 효율성, 성능, 라이선스, 배포 가능성의 네 가지 기준을 모두 충족하는 최선의 출발점이다.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 09 -->
+  <div class="sec">
+    <h2><span class="num">09</span>참고 링크</h2>
+    <ul class="link-list">
+      <li contenteditable="true">HuggingFace 모델 카드 (Instruct): https://huggingface.co/Qwen/Qwen3.5-4B-Instruct</li>
+      <li contenteditable="true">HuggingFace 베이스 모델: https://huggingface.co/Qwen/Qwen3.5-4B</li>
+      <li contenteditable="true">Qwen3.5 공식 릴리즈 블로그: https://qwen.ai/blog?id=qwen3.5</li>
+      <li contenteditable="true">GitHub 공식 저장소 (QwenLM): https://github.com/QwenLM/Qwen3.6</li>
+      <li contenteditable="true">Unsloth 로컬 실행 가이드: https://unsloth.ai/docs/models/qwen3.5</li>
+      <li contenteditable="true">Apache 2.0 라이선스 원문: https://www.apache.org/licenses/LICENSE-2.0</li>
+    </ul>
+  </div>
+
+  <!-- SUBMISSION -->
+  <div class="callout">
+    <div class="label">Submission · 제출 정보</div>
+    <p><strong style="color:var(--ink);font-weight:700">GitHub Repository 주소:</strong> <span contenteditable="true">https://github.com/본인아이디/전북특별자치도_노인석_slm_report</span></p>
+    <p><strong style="color:var(--ink);font-weight:700">파일명:</strong> 전북특별자치도_노인석_slm_report.html</p>
+    <p style="margin-top:3mm;font-size:10pt;color:var(--ink-mute)">최종 제출 시 EDIT 버튼을 눌러 내용을 수정한 뒤, [HTML 저장] 버튼으로 파일을 다운로드해 GitHub Repository에 업로드하세요.</p>
+  </div>
+
+</section>
+</div>
+
+<script>
+let editMode = false;
+function toggleEdit(){
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('btnEdit');
+  if(editMode){ btn.classList.add('active'); btn.textContent = '✎ EDITING'; }
+  else { btn.classList.remove('active'); btn.textContent = '✎ EDIT'; }
+}
+function saveHtml(){
+  const idCells = document.querySelectorAll('.id-cell .v');
+  const num = (idCells[0]?.textContent || '').trim() || 'XX';
+  const name = (idCells[1]?.textContent || '').trim() || '이름';
+  const fname = `${num}_${name}_slm_report.html`.replace(/[\/\\?%*:|"<>]/g, '');
+  const wasEdit = editMode;
+  if(wasEdit) toggleEdit();
+  const doctype = '<!DOCTYPE html>\n';
+  const html = doctype + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(wasEdit) toggleEdit();
+  showToast(`✓ ${fname} 다운로드 완료`);
+}
+function showToast(msg){
+  let t = document.getElementById('__toast');
+  if(!t){
+    t = document.createElement('div'); t.id='__toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:12px 24px;border-radius:24px;font:700 11px Pretendard,sans-serif;letter-spacing:.6px;box-shadow:0 8px 28px rgba(15,23,42,.4);z-index:400;border:1px solid #2563EB;opacity:0;transition:.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.style.opacity = '1');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 3500);
+}
+document.addEventListener('keydown', (e) => {
+  if(e.key === 's' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); saveHtml(); }
+  else if(e.key === 'Escape' && editMode){
+    if(document.activeElement && document.activeElement.contentEditable === 'true'){ document.activeElement.blur(); }
+    else { toggleEdit(); }
+  } else if((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey){
+    if(!document.activeElement || document.activeElement === document.body){ toggleEdit(); }
+  }
+});
+</script>
+
+<div id="__toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgb(15, 23, 42); color: rgb(255, 255, 255); padding: 12px 24px; border-radius: 24px; font: 700 11px Pretendard, sans-serif; letter-spacing: 0.6px; box-shadow: rgba(15, 23, 42, 0.4) 0px 8px 28px; z-index: 400; border: 1px solid rgb(37, 99, 235); opacity: 0; transition: 0.3s;">✓ 전북특별자치도_노인석_slm_report.html 다운로드 완료</div></body></html>

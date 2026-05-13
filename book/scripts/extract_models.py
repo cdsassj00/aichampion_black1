@@ -38,8 +38,8 @@ def extract_model(html: str) -> str:
     text = strip_tags(html)
     # 가장 신뢰성 높은 패턴: "선택 모델명 <X> (Hugging Face 모델 링크|HF|01 모델|<숫자><숫자>)"
     patterns = [
-        r"선택\s*모델명\s+([^\s].{2,120}?)\s+(?:Hugging Face|HF|모델 링크|01 |Hugging|huggingface)",
-        r"선택\s*모델명\s*[:：]?\s*([^\n\r·•|]{3,120})",
+        r"(?:선택|분석)\s*모델명\s+([^\s].{2,120}?)\s+(?:Hugging Face|HF|모델 링크|01 |Hugging|huggingface)",
+        r"(?:선택|분석)\s*모델명\s*[:：]?\s*([^\n\r·•|]{3,120})",
         r"Subject\s*Model\s+([A-Za-z0-9._/\- ]{3,80})",
         r"Selected\s+Model\s*[:：]?\s*([A-Za-z0-9._/\- ]{3,80})",
     ]
