@@ -5,9 +5,6 @@ on:
     branches:
       - claude/setup-ultraplan-goals-3Kimc
       - main
-    paths:
-      - "book/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
