@@ -30,6 +30,43 @@ def safe_slug(s: str) -> str:
     return re.sub(r"[^\w가-힣\-]+", "_", s).strip("_")
 
 
+# 임베드 뷰에서 챕터 HTML이 답답해 보이지 않도록 주입할 스타일.
+# 리포트들이 공유하는 클래스(.tb, .stack, .sheet, .cv)를 부드럽게 오버라이드.
+EMBED_STYLE = """<script id="book-embed-detect">
+  if (window.self !== window.top) { document.documentElement.classList.add('book-embedded'); }
+</script>
+<style id="book-embed-overrides">
+  /* Applied only when this report is loaded inside the book viewer iframe. */
+  html.book-embedded .tb { display: none !important; }
+  html.book-embedded body { background: #f8fafc !important; padding-top: 0 !important; }
+  html.book-embedded .stack { padding: 16px 12px 40px !important; gap: 16px !important; align-items: stretch !important; }
+  html.book-embedded .sheet {
+    width: auto !important;
+    max-width: 1100px !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 28px 32px !important;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.06) !important;
+  }
+  html.book-embedded .cv {
+    min-height: 0 !important;
+    padding: 36px 32px !important;
+  }
+  html.book-embedded .cv .cv-content { padding: 0 !important; }
+  @media (max-width: 720px) {
+    html.book-embedded .sheet { padding: 18px 16px !important; }
+  }
+</style>"""
+
+
+def inject_overrides(html: str) -> str:
+    if "book-embed-overrides" in html:
+        return html
+    if "</head>" in html:
+        return html.replace("</head>", EMBED_STYLE + "\n</head>", 1)
+    return EMBED_STYLE + html
+
+
 def md_to_html(md: str) -> str:
     """발간사 전용 초미니 마크다운: # / ## 헤딩, **bold**, 빈 줄로 분리된 단락."""
     blocks = re.split(r"\n\s*\n", md.strip())
@@ -81,7 +118,9 @@ def main() -> int:
         )
         src = ROOT / e["local"]
         dst = CHAPTERS / slug
-        shutil.copy2(src, dst)
+        # Copy the chapter HTML with embed-view style overrides injected.
+        original = src.read_text(encoding="utf-8", errors="replace")
+        dst.write_text(inject_overrides(original), encoding="utf-8")
         chapters.append({
             "cohort": cohort,
             "n": n_in_cohort,
@@ -89,6 +128,7 @@ def main() -> int:
             "slug": slug,
             "name": e["name"],
             "org": e["org"],
+            "model": e.get("model", ""),
             "repo": e.get("repo", ""),
         })
 
@@ -104,11 +144,17 @@ def main() -> int:
             f'<li class="toc-section"><span class="section-label">{cohort}기 · {len(items)}편</span></li>'
         )
         for c in items:
+            model_html = (
+                f'<span class="model" title="{escape(c["model"])}">'
+                f'{escape(c["model"])}</span>'
+                if c.get("model") else ""
+            )
             toc_html_parts.append(
                 f'<li><a href="#" data-cohort="{c["cohort"]}" data-n="{c["n"]}">'
                 f'<span class="num">{c["n"]:02d}</span>'
                 f'<span class="meta"><span class="org">{escape(c["org"])}</span>'
-                f'<span class="name">{escape(c["name"])}</span></span></a></li>'
+                f'<span class="name">{escape(c["name"])}</span>'
+                f'{model_html}</span></a></li>'
             )
     toc_items = "\n".join(toc_html_parts)
 
@@ -194,9 +240,18 @@ def main() -> int:
     font-variant-numeric: tabular-nums; font-size: 11px;
     color: var(--ink-mute); width: 24px; flex: none;
   }}
-  ol.toc .meta {{ display: flex; flex-direction: column; gap: 1px; min-width: 0; }}
+  ol.toc .meta {{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }}
   ol.toc .org {{ font-size: 11px; color: var(--ink-mute); }}
   ol.toc .name {{ font-size: 14px; font-weight: 600; }}
+  ol.toc .model {{
+    display: inline-block; align-self: flex-start;
+    margin-top: 3px; padding: 1px 7px;
+    font-size: 10.5px; color: #93c5fd; font-weight: 500;
+    background: rgba(96,165,250,0.12); border: 1px solid rgba(96,165,250,0.25);
+    border-radius: 10px; max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }}
+  ol.toc li a.active .model {{ color: #bfdbfe; background: rgba(191,219,254,0.2); }}
 
   main {{ position: relative; background: #f1f5f9; }}
   iframe {{ width: 100%; height: 100%; border: 0; background: white; }}
