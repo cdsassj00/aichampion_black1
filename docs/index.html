@@ -16,8 +16,11 @@
   body {
     font-family: 'Pretendard Variable','Pretendard','Inter','Noto Sans KR',sans-serif;
     background: var(--bg); color: var(--ink);
-    display: grid; grid-template-columns: 320px 1fr; height: 100vh;
+    display: grid; grid-template-columns: 300px 1fr; height: 100vh;
+    transition: grid-template-columns 0.2s ease;
   }
+  body.collapsed { grid-template-columns: 0 1fr; }
+  body.collapsed aside { opacity: 0; pointer-events: none; }
   aside {
     background: var(--panel); border-right: 1px solid var(--border);
     overflow-y: auto; display: flex; flex-direction: column;
@@ -92,22 +95,31 @@
   .cover .pending-note { margin-top: 10px; font-size: 13px; color: #9a3412; }
 
   .topbar {
-    position: absolute; top: 0; left: 0; right: 0; height: 44px;
+    position: absolute; top: 0; left: 0; right: 0; height: 48px;
     display: none; align-items: center; justify-content: space-between;
-    padding: 0 16px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+    padding: 0 14px; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
     border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #334155; z-index: 5;
   }
   .topbar.show { display: flex; }
-  .topbar .title { font-weight: 600; }
-  .topbar .nav { display: flex; align-items: center; gap: 6px; }
-  .topbar .nav button {
-    background: white; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px;
-    cursor: pointer; font-size: 12px;
+  .topbar .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .topbar .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .nav { display: flex; align-items: center; gap: 6px; flex: none; }
+  .topbar .nav button, .topbar .nav .btn {
+    background: white; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 5px;
+    cursor: pointer; font-size: 12px; text-decoration: none; color: #334155;
+    display: inline-flex; align-items: center; gap: 4px;
   }
-  .topbar .nav button:hover { background: #f1f5f9; }
+  .topbar .nav button:hover, .topbar .nav .btn:hover { background: #f1f5f9; }
   .topbar .nav button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .topbar a { color: #2563eb; text-decoration: none; font-size: 12px; }
-  iframe.show { margin-top: 44px; height: calc(100% - 44px); }
+  .topbar .nav .primary { background: #2563eb; border-color: #2563eb; color: white; }
+  .topbar .nav .primary:hover { background: #1d4ed8; }
+  .topbar .toggle-sb {
+    background: transparent; border: 1px solid #cbd5e1; border-radius: 5px;
+    width: 28px; height: 28px; cursor: pointer; font-size: 14px; color: #475569;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .topbar .toggle-sb:hover { background: #f1f5f9; }
+  iframe.show { margin-top: 48px; height: calc(100% - 48px); }
 
   @media (max-width: 820px) {
     body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -153,9 +165,13 @@
 </aside>
 <main>
   <div class="topbar" id="topbar">
-    <div class="title" id="chapter-title"></div>
+    <div class="left">
+      <button class="toggle-sb" id="toggle-sb" title="목차 접기/펼치기" aria-label="목차 토글">☰</button>
+      <div class="title" id="chapter-title"></div>
+    </div>
     <div class="nav">
-      <a id="open-repo" href="#" target="_blank" rel="noopener">GitHub ↗</a>
+      <a id="open-repo" class="btn" href="#" target="_blank" rel="noopener">GitHub ↗</a>
+      <a id="open-fullscreen" class="btn primary" href="#" target="_blank" rel="noopener">전체 화면 ↗</a>
       <button id="prev">← 이전</button>
       <button id="next">다음 →</button>
     </div>
@@ -180,9 +196,11 @@ const viewer = document.getElementById('viewer');
 const topbar = document.getElementById('topbar');
 const titleEl = document.getElementById('chapter-title');
 const repoLink = document.getElementById('open-repo');
+const fullscreenLink = document.getElementById('open-fullscreen');
 const prevBtn = document.getElementById('prev');
 const nextBtn = document.getElementById('next');
 const homeLink = document.getElementById('home-link');
+const toggleSb = document.getElementById('toggle-sb');
 let current = -1;
 
 function show(i) {
@@ -193,7 +211,8 @@ function show(i) {
   topbar.classList.add('show');
   titleEl.textContent = `[${c.cohort}기] ${String(c.n).padStart(2,'0')}. ${c.org} · ${c.name}`;
   repoLink.href = c.repo || '#';
-  repoLink.style.display = c.repo ? 'inline' : 'none';
+  repoLink.style.display = c.repo ? 'inline-flex' : 'none';
+  fullscreenLink.href = `chapters/${c.slug}`;
   prevBtn.disabled = i === 0;
   nextBtn.disabled = i === chapters.length - 1;
   links.forEach((a) => {
@@ -223,6 +242,11 @@ links.forEach((a) => {
 prevBtn.addEventListener('click', () => show(current - 1));
 nextBtn.addEventListener('click', () => show(current + 1));
 homeLink.addEventListener('click', (ev) => { ev.preventDefault(); showCover(); });
+toggleSb.addEventListener('click', () => {
+  document.body.classList.toggle('collapsed');
+  try { localStorage.setItem('sb-collapsed', document.body.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
+});
+try { if (localStorage.getItem('sb-collapsed') === '1') document.body.classList.add('collapsed'); } catch(e) {}
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'ArrowLeft' && current > 0) show(current - 1);
   if (ev.key === 'ArrowRight' && current >= 0 && current < chapters.length - 1) show(current + 1);
